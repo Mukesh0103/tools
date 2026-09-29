@@ -1,0 +1,210 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens, from the "Components & tokens" board.
+ * Small text on tinted chips uses the deeper shades (#4338CA, #B91C1C) so it keeps AA contrast.
+ */
+:root {
+  --background: #fafaf9;
+  --surface: #ffffff;
+  --foreground: #1c1917;
+  --muted-foreground: #78716c;
+  --subtle-foreground: #57534e;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --divider: #f5f5f4;
+  --hover: #f5f5f4;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-foreground: #ffffff;
+  --primary-soft: #eef2ff;
+  --primary-soft-border: #c7d2fe;
+  --primary-soft-foreground: #4338ca;
+  --primary-ring: rgb(79 70 229 / 0.14);
+
+  --blocker: #dc2626;
+  --blocker-soft: #fef2f2;
+  --blocker-border: #fecaca;
+  --blocker-soft-foreground: #b91c1c;
+  --blocker-ring: rgb(220 38 38 / 0.12);
+
+  --inverse: #1c1917;
+  --inverse-foreground: #f5f5f4;
+  --inverse-accent: #a5b4fc;
+
+  --kbd-bg: #ffffff;
+  --kbd-border: #e7e5e4;
+  --kbd-foreground: #57534e;
+
+  --avatar: #e0e7ff;
+  --avatar-foreground: #3730a3;
+  --logo-bg: #1c1917;
+  --logo-line: #fafaf9;
+  --logo-accent: #818cf8;
+
+  --radius: 8px;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0c0a09;
+  --surface: #1c1917;
+  --foreground: #f5f5f4;
+  --muted-foreground: #a8a29e;
+  --subtle-foreground: #d6d3d1;
+  --border: #292524;
+  --border-strong: #44403c;
+  --divider: #292524;
+  --hover: #292524;
+
+  --primary: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-foreground: #1e1b4b;
+  --primary-soft: rgb(129 140 248 / 0.16);
+  --primary-soft-border: rgb(129 140 248 / 0.4);
+  --primary-soft-foreground: #c7d2fe;
+  --primary-ring: rgb(129 140 248 / 0.22);
+
+  --blocker: #f87171;
+  --blocker-soft: rgb(248 113 113 / 0.14);
+  --blocker-border: rgb(248 113 113 / 0.4);
+  --blocker-soft-foreground: #fca5a5;
+  --blocker-ring: rgb(248 113 113 / 0.2);
+
+  --inverse: #f5f5f4;
+  --inverse-foreground: #1c1917;
+  --inverse-accent: #4f46e5;
+
+  --kbd-bg: #1c1917;
+  --kbd-border: #44403c;
+  --kbd-foreground: #d6d3d1;
+
+  --avatar: rgb(129 140 248 / 0.2);
+  --avatar-foreground: #c7d2fe;
+  --logo-bg: #f5f5f4;
+  --logo-line: #1c1917;
+  --logo-accent: #4f46e5;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-divider: var(--divider);
+  --color-hover: var(--hover);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-border: var(--primary-soft-border);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-primary-ring: var(--primary-ring);
+
+  --color-blocker: var(--blocker);
+  --color-blocker-soft: var(--blocker-soft);
+  --color-blocker-border: var(--blocker-border);
+  --color-blocker-soft-foreground: var(--blocker-soft-foreground);
+  --color-blocker-ring: var(--blocker-ring);
+
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-inverse-accent: var(--inverse-accent);
+
+  --color-kbd: var(--kbd-bg);
+  --color-kbd-border: var(--kbd-border);
+  --color-kbd-foreground: var(--kbd-foreground);
+  --color-avatar: var(--avatar);
+  --color-avatar-foreground: var(--avatar-foreground);
+  --color-logo: var(--logo-bg);
+  --color-logo-line: var(--logo-line);
+  --color-logo-accent: var(--logo-accent);
+
+  /* shadcn/ui aliases, so generated components pick up the palette */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-muted: var(--hover);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--blocker);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, Menlo, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: var(--radius);
+
+  --animate-blink: blink 1s steps(1) infinite;
+  --animate-fresh: fresh 2.4s ease-out forwards;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* New entries land with a brief indigo tint that fades out. */
+@keyframes fresh {
+  0%,
+  45% {
+    background-color: var(--primary-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--primary-soft);
+  }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

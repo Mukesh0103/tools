@@ -1,0 +1,4 @@
+[
+  { "role": "system", "content": {{ instructions | dump }} },
+  { "role": "user", "content": {{ prompt | dump }} }
+]

@@ -1,0 +1,137 @@
+name: worklog · CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/worklog/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/worklog-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/worklog/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/worklog-ci.yml"
+
+concurrency:
+  group: worklog-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/worklog
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit + component tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format
+        run: pnpm --dir ../.. format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  integration:
+    name: Integration tests (Postgres via Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
+
+  e2e:
+    name: End-to-end (Playwright + axe)
+    runs-on: ubuntu-latest
+    needs: checks
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: worklog
+          POSTGRES_PASSWORD: worklog
+          POSTGRES_DB: worklog
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U worklog"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://worklog:worklog@localhost:5432/worklog
+      AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0000
+      AUTH_TEST_LOGIN_SECRET: ci-test-login-secret
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/worklog/playwright-report
+          retention-days: 7
+
+  prompts-changed:
+    name: Detect prompt changes
+    runs-on: ubuntu-latest
+    outputs:
+      prompts: ${{ steps.filter.outputs.prompts }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            prompts:
+              - "apps/worklog/src/lib/ai/prompts/**"
+              - "apps/worklog/tests/evals/**"
+              - "apps/worklog/tests/fixtures/**"
+
+  evals:
+    name: Prompt evals (promptfoo)
+    runs-on: ubuntu-latest
+    needs: prompts-changed
+    if: needs.prompts-changed.outputs.prompts == 'true'
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run evals
+        if: env.ANTHROPIC_API_KEY != ''
+        run: pnpm evals
+      - name: Skip (no ANTHROPIC_API_KEY secret)
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "::warning::Prompts changed but the ANTHROPIC_API_KEY secret isn't set, so evals were skipped."

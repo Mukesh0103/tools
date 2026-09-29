@@ -1,0 +1,69 @@
+{
+  "description": "The design's sample data: a normal week with one active blocker today and an old one on Friday.",
+  "today": "2026-09-29",
+  "entries": [
+    {
+      "date": "2026-09-25",
+      "time": "12:00",
+      "text": "Demoed invoice filters to support team",
+      "tags": ["#billing"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-25",
+      "time": "16:25",
+      "text": "CI runners out of disk, builds queued for 2 hours",
+      "tags": ["#infra"],
+      "isBlocker": true
+    },
+    {
+      "date": "2026-09-28",
+      "time": "11:15",
+      "text": "Wrote RFC draft for usage-based pricing",
+      "tags": ["#billing"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-28",
+      "time": "14:40",
+      "text": "Paired with Ravi on flaky checkout tests",
+      "tags": ["#infra"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-28",
+      "time": "18:02",
+      "text": "Shipped CSV export for invoice reports",
+      "tags": ["#billing"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-29",
+      "time": "10:20",
+      "text": "Sprint planning, picked up three tickets",
+      "tags": ["#planning"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-29",
+      "time": "13:05",
+      "text": "Fixed pagination bug in the invoices API",
+      "tags": ["#billing"],
+      "isBlocker": false
+    },
+    {
+      "date": "2026-09-29",
+      "time": "15:32",
+      "text": "Waiting on staging DB credentials from infra",
+      "tags": ["#billing"],
+      "isBlocker": true
+    },
+    {
+      "date": "2026-09-29",
+      "time": "17:10",
+      "text": "Reviewed Anu’s PR for the export queue",
+      "tags": ["#reviews"],
+      "isBlocker": false
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+**/.next
+**/node_modules
+**/drizzle/meta
+**/playwright-report
+**/test-results
+**/coverage
+**/docs/design
+apps/worklog/tests/evals/prompt.json
+apps/worklog/tests/evals/.generated

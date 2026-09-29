@@ -1,0 +1,21 @@
+# Prompt evals for the generators. Run with `pnpm evals` (needs ANTHROPIC_API_KEY).
+# CI runs these only when files under src/lib/ai/prompts/ change.
+description: Worklog generator prompts
+
+prompts:
+  - id: file://prompt.json
+    label: worklog
+
+providers:
+  - id: anthropic:messages:claude-sonnet-5-5
+    config:
+      max_tokens: 900
+
+defaultTest:
+  options:
+    # Grader for llm-rubric assertions.
+    provider: anthropic:messages:claude-haiku-4-5-20251001
+
+tests: file://.generated/tests.json
+
+outputPath: .generated/results.json

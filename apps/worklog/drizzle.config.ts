@@ -1,0 +1,13 @@
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./src/lib/db/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
+  casing: "snake_case",
+  dbCredentials: {
+    url: process.env.DATABASE_URL ?? "postgres://worklog:worklog@localhost:5432/worklog",
+  },
+  strict: true,
+  verbose: true,
+});

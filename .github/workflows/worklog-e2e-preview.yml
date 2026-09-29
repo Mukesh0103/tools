@@ -1,0 +1,43 @@
+name: worklog · E2E on Vercel preview
+
+# Opt-in: set the repository variable WORKLOG_E2E_ON_PREVIEW=true, and the secrets
+# WORKLOG_TEST_LOGIN_SECRET (matching AUTH_TEST_LOGIN_SECRET in the Vercel *Preview*
+# environment only) and VERCEL_AUTOMATION_BYPASS_SECRET (if deployment protection is on).
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: >-
+      vars.WORKLOG_E2E_ON_PREVIEW == 'true' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worklog
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+      AUTH_TEST_LOGIN_SECRET: ${{ secrets.WORKLOG_TEST_LOGIN_SECRET }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-preview
+          path: apps/worklog/playwright-report
+          retention-days: 7

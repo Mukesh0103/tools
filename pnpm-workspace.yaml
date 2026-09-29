@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - "@sentry/cli"
+  - protobufjs
+  - unrs-resolver

@@ -1,0 +1,28 @@
+name: worklog · Daily reminders
+
+# Calls the reminders endpoint every hour. Each user is emailed at most once per local day,
+# after their chosen time, and only if they haven't logged anything.
+# Needs the repository variable WORKLOG_APP_URL (e.g. https://worklog.example.com)
+# and the secret WORKLOG_CRON_SECRET (same value as CRON_SECRET in Vercel).
+# On Vercel Pro you can use Vercel Cron instead; see apps/worklog/README.md.
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  trigger:
+    if: vars.WORKLOG_APP_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send due reminders
+        env:
+          APP_URL: ${{ vars.WORKLOG_APP_URL }}
+          CRON_SECRET: ${{ secrets.WORKLOG_CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/reminders"

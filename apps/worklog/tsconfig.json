@@ -1,0 +1,13 @@
+{
+  "extends": "@tools/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
+    },
+    "types": ["vitest/globals", "@testing-library/jest-dom/vitest"]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next", "playwright-report", "test-results"]
+}
