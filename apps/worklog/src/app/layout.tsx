@@ -12,11 +12,26 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+const shareTitle = "Worklog — One line per task. Your standup writes itself.";
+const description =
+  "Log one line per task as you work. Worklog turns your entries into a standup, weekly summary or appraisal notes, ready to paste into Slack.";
+// Without APP_URL, Next falls back to the Vercel deployment URL (or localhost in dev).
+const siteUrl = process.env.APP_URL || process.env.AUTH_URL;
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   title: { default: "Worklog", template: "%s · Worklog" },
-  description: "One line per task. Your standup writes itself.",
+  description,
   applicationName: "Worklog",
   robots: { index: false, follow: false },
+  openGraph: {
+    type: "website",
+    siteName: "Worklog",
+    locale: "en_US",
+    title: shareTitle,
+    description,
+  },
+  twitter: { card: "summary_large_image", title: shareTitle, description },
 };
 
 export const viewport: Viewport = {
