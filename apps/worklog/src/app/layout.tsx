@@ -19,7 +19,8 @@ const description =
 const siteUrl = process.env.APP_URL || process.env.AUTH_URL;
 
 export const metadata: Metadata = {
-  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  // Origin only: Next resolves image URLs under metadataBase's path in production builds.
+  metadataBase: siteUrl ? new URL("/", siteUrl) : undefined,
   title: { default: "Worklog", template: "%s · Worklog" },
   description,
   applicationName: "Worklog",
