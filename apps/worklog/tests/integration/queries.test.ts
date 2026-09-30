@@ -9,15 +9,12 @@ describe("entries", () => {
   it("never returns or modifies another user's entries", async () => {
     const alice = await createUser();
     const bob = await createUser();
-    const [row] = await seedEntries(alice.id, [
-      { entryDate: "2026-09-29", text: "Alice's work", tags: ["#billing"] },
-    ]);
+    const [row] = await seedEntries(alice.id, [{ entryDate: "2026-09-29", text: "Alice's work" }]);
 
     expect(await entryQ.listEntriesForDay(bob.id, "2026-09-29")).toEqual([]);
     expect(await entryQ.listTimeline(bob.id)).toEqual({ entries: [], hasMore: false });
-    expect(await entryQ.listTopTags(bob.id)).toEqual([]);
     expect(
-      await entryQ.updateEntry(bob.id, row!.id, { text: "hijacked", tags: [], isBlocker: false }),
+      await entryQ.updateEntry(bob.id, row!.id, { text: "hijacked", isBlocker: false }),
     ).toBeUndefined();
     expect(await entryQ.deleteEntry(bob.id, row!.id)).toBeUndefined();
     expect((await entryQ.listEntriesForDay(alice.id, "2026-09-29"))[0]?.text).toBe("Alice's work");
@@ -41,12 +38,12 @@ describe("entries", () => {
     expect(await entryQ.hasEntriesOn(u.id, "2026-10-01")).toBe(false);
   });
 
-  it("filters the timeline by search, tag and blockers", async () => {
+  it("filters the timeline by search and blockers", async () => {
     const u = await createUser();
     await seedEntries(u.id, [
-      { entryDate: "2026-09-29", text: "Fixed 100% CPU in the Invoices API", tags: ["#billing"] },
-      { entryDate: "2026-09-29", text: "Waiting on DB creds", tags: ["#billing"], isBlocker: true },
-      { entryDate: "2026-09-28", text: "Paired on flaky tests", tags: ["#infra"] },
+      { entryDate: "2026-09-29", text: "Fixed 100% CPU in the Invoices API" },
+      { entryDate: "2026-09-29", text: "Waiting on DB creds", isBlocker: true },
+      { entryDate: "2026-09-28", text: "Paired on flaky tests #infra" },
     ]);
     const texts = async (f: entryQ.TimelineFilter) =>
       (await entryQ.listTimeline(u.id, f)).entries.map((e) => e.text);
@@ -54,9 +51,8 @@ describe("entries", () => {
     expect(await texts({ q: "invoices" })).toEqual(["Fixed 100% CPU in the Invoices API"]);
     expect(await texts({ q: "100%" })).toEqual(["Fixed 100% CPU in the Invoices API"]);
     expect(await texts({ q: "%" })).toEqual(["Fixed 100% CPU in the Invoices API"]);
-    expect(await texts({ tag: "#infra" })).toEqual(["Paired on flaky tests"]);
+    expect(await texts({ q: "#infra" })).toEqual(["Paired on flaky tests #infra"]);
     expect(await texts({ blockersOnly: true })).toEqual(["Waiting on DB creds"]);
-    expect(await entryQ.listTopTags(u.id)).toEqual(["#billing", "#infra"]);
   });
 
   it("pages whole days so 'Show older' never splits one", async () => {
@@ -82,8 +78,6 @@ describe("generations", () => {
       userId: u.id,
       rangeStart: "2026-09-28",
       rangeEnd: "2026-09-29",
-      promptVersion: "standup.v1",
-      model: "mock",
     };
     const standup = await genQ.insertGeneration({
       ...base,
@@ -112,7 +106,6 @@ describe("users and settings", () => {
     const u = await createUser();
     expect((await getUserWithSettings(u.id))?.settings).toMatchObject({
       reminderEnabled: false,
-      defaultTone: "concise",
       standupFormat: "ytb",
     });
     await upsertSettings(u.id, { reminderEnabled: true, reminderTime: "17:30:00" });

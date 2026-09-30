@@ -21,7 +21,7 @@ beforeEach(async () => {
 });
 
 describe("entry actions", () => {
-  it("parses tags and blockers on create and returns the local time", async () => {
+  it("parses blockers on create, keeps hashtags as text, and returns the local time", async () => {
     const today = todayInZone("Asia/Kolkata");
     const res = await createEntry({
       raw: "Waiting on DB creds #billing !blocker",
@@ -30,8 +30,7 @@ describe("entry actions", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.data).toMatchObject({
-      text: "Waiting on DB creds",
-      tags: ["#billing"],
+      text: "Waiting on DB creds #billing",
       isBlocker: true,
       entryDate: today,
     });
@@ -60,12 +59,12 @@ describe("entry actions", () => {
     });
   });
 
-  it("rejects empty, tag-only and over-long lines", async () => {
+  it("rejects empty, blocker-only and over-long lines", async () => {
     const date = todayInZone("Asia/Kolkata");
     expect((await createEntry({ raw: "   ", entryDate: date })).ok).toBe(false);
-    expect(await createEntry({ raw: "#billing", entryDate: date })).toEqual({
+    expect(await createEntry({ raw: "!blocker", entryDate: date })).toEqual({
       ok: false,
-      error: "Add a few words besides tags.",
+      error: "Add a few words besides !blocker.",
     });
     expect((await createEntry({ raw: "x".repeat(501), entryDate: date })).ok).toBe(false);
     expect((await createEntry({ raw: "ok", entryDate: "not-a-date" })).ok).toBe(false);
@@ -78,11 +77,11 @@ describe("entry actions", () => {
 
     const updated = await updateEntry({
       id: created.data.id,
-      raw: "Fixed pagination bug #billing",
+      raw: "Fixed pagination bug !blocker",
     });
     expect(updated.ok && updated.data).toMatchObject({
       text: "Fixed pagination bug",
-      tags: ["#billing"],
+      isBlocker: true,
     });
 
     const deleted = await deleteEntry({ id: created.data.id });
@@ -118,7 +117,6 @@ describe("settings actions", () => {
       timezone: "Mars/Olympus",
       reminderEnabled: true,
       reminderTime: "18:00",
-      defaultTone: "concise",
       standupFormat: "ytb",
     });
     expect(bad).toEqual({ ok: false, error: "Unknown time zone" });
@@ -127,7 +125,6 @@ describe("settings actions", () => {
       timezone: "Europe/London",
       reminderEnabled: true,
       reminderTime: "17:45",
-      defaultTone: "detailed",
       standupFormat: "paragraph",
     });
     expect(res.ok).toBe(true);
@@ -136,7 +133,6 @@ describe("settings actions", () => {
     expect(user?.settings).toMatchObject({
       reminderEnabled: true,
       reminderTime: "17:45:00",
-      defaultTone: "detailed",
       standupFormat: "paragraph",
     });
   });

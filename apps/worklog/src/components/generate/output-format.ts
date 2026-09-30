@@ -1,4 +1,4 @@
-import { escapeHtml, outputToHtml, outputToPlainText } from "@/lib/ai/output";
+import { escapeHtml, outputToHtml, outputToPlainText } from "@/lib/generate/output";
 
 export function domToOutput(root: HTMLElement): string {
   let out = "";

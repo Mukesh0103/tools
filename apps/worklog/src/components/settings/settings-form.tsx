@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Download, LogOut } from "lucide-react";
+import { Check, ChevronDown, Download, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -157,17 +157,24 @@ export function SettingsForm({
             title="Time zone"
             description="Decides where “today” starts and ends"
           />
-          <select
-            id="tz"
-            {...form.register("timezone")}
-            className="h-9 min-w-[200px] rounded-lg border border-border bg-surface px-2.5 text-[13px] sm:max-w-[280px]"
-          >
-            {timeZones.map((z) => (
-              <option key={z.value} value={z.value}>
-                {z.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative min-w-[200px] sm:max-w-[280px]">
+            <select
+              id="tz"
+              {...form.register("timezone")}
+              className="h-9 w-full appearance-none rounded-lg border border-border bg-surface pr-8 pl-2.5 text-[13px]"
+            >
+              {timeZones.map((z) => (
+                <option key={z.value} value={z.value}>
+                  {z.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+          </div>
         </Row>
         <Row>
           <RowLabel
@@ -180,8 +187,16 @@ export function SettingsForm({
               id="rem"
               type="time"
               {...form.register("reminderTime")}
+              onClick={(e) => {
+                // Chrome only opens the picker from its clock icon; open it from anywhere.
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // Unsupported (e.g. Safari desktop) — the field stays editable.
+                }
+              }}
               aria-invalid={Boolean(form.formState.errors.reminderTime)}
-              className="h-9 w-[110px] rounded-lg border border-border bg-surface px-2.5 text-[13px]"
+              className="h-9 w-[116px] cursor-pointer rounded-lg border border-border bg-surface px-2.5 text-[13px]"
             />
             <Controller
               control={form.control}
@@ -200,7 +215,7 @@ export function SettingsForm({
           <RowLabel
             id="fmt-l"
             title="Default standup format"
-            description="Used for every standup you generate"
+            description="Sections splits your update into Yesterday, Today and Blockers"
           />
           <Controller
             control={form.control}
@@ -212,32 +227,9 @@ export function SettingsForm({
                 value={field.value}
                 onChange={field.onChange}
                 options={[
-                  { value: "ytb", label: "Y / T / B" },
+                  { value: "ytb", label: "Sections" },
                   { value: "bullets", label: "Bullets" },
                   { value: "paragraph", label: "Paragraph" },
-                ]}
-              />
-            )}
-          />
-        </Row>
-        <Row>
-          <RowLabel
-            id="tone-l"
-            title="Default tone"
-            description="Where generators start; you can switch per output"
-          />
-          <Controller
-            control={form.control}
-            name="defaultTone"
-            render={({ field }) => (
-              <Segmented
-                size="sm"
-                labelledBy="tone-l"
-                value={field.value}
-                onChange={field.onChange}
-                options={[
-                  { value: "concise", label: "Concise" },
-                  { value: "detailed", label: "Detailed" },
                 ]}
               />
             )}
@@ -263,7 +255,7 @@ export function SettingsForm({
         <Row>
           <RowLabel
             title="Export entries"
-            description="Everything you’ve logged, with dates and tags"
+            description="Everything you’ve logged, with dates and blockers"
           />
           <div className="flex gap-2">
             <Button asChild size="sm" className="h-[34px]">
@@ -299,7 +291,7 @@ function DeleteAccount() {
     <AlertDialog onOpenChange={() => setConfirm("")}>
       <AlertDialogTrigger asChild>
         <Button variant="danger" size="sm" className="h-[34px]">
-          Delete account…
+          Delete account
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

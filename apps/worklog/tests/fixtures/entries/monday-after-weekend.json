@@ -6,14 +6,12 @@
       "date": "2026-09-25",
       "time": "11:30",
       "text": "Migrated invoice emails to the new template service",
-      "tags": ["#billing"],
       "isBlocker": false
     },
     {
       "date": "2026-09-25",
       "time": "16:00",
       "text": "Waiting on legal review of the new refund policy copy",
-      "tags": ["#billing"],
       "isBlocker": true
     }
   ]

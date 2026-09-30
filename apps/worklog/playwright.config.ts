@@ -71,7 +71,6 @@ export default defineConfig({
           AUTH_TEST_LOGIN_SECRET: TEST_LOGIN_SECRET,
           AUTH_URL: baseURL,
           APP_URL: baseURL,
-          AI_PROVIDER: "mock",
           NEXT_TELEMETRY_DISABLED: "1",
         },
       },

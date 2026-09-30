@@ -1,5 +1,5 @@
 /**
- * Every generator, including the plain fallback, writes plain text in one shape:
+ * Every generator writes plain text in one shape:
  *   **Heading**          ← a heading on its own line
  *   – bullet             ← en dash bullets
  *   Free prose lines

@@ -1,11 +1,11 @@
 import { Clock, List, PenLine, SlidersHorizontal, Sparkles, type LucideIcon } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; shortcut?: string };
+export type NavItem = { href: string; label: string; icon: LucideIcon };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/today", label: "Today", icon: PenLine, shortcut: "N" },
-  { href: "/timeline", label: "Timeline", icon: List, shortcut: "/" },
-  { href: "/generate", label: "Generate", icon: Sparkles, shortcut: "G" },
+  { href: "/today", label: "Today", icon: PenLine },
+  { href: "/timeline", label: "Timeline", icon: List },
+  { href: "/generate", label: "Generate", icon: Sparkles },
   { href: "/history", label: "History", icon: Clock },
   { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];

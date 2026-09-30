@@ -12,7 +12,7 @@ if (dsn) {
       dsn,
       environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
       tracesSampleRate: 0.1,
-      dataCollection: { userInfo: false, httpBodies: [], genAI: { inputs: false, outputs: false } },
+      dataCollection: { userInfo: false, httpBodies: [] },
     });
     sentry = Sentry;
   });

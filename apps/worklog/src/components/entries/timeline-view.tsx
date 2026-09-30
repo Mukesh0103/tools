@@ -4,25 +4,22 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Kbd } from "@/components/ui/kbd";
 import { groupByDay, type EntryView } from "@/lib/entry-view";
 import { cn } from "@/lib/utils";
 import { DayGroup } from "./day-group";
 import { EntryListSkeleton } from "./entry-list-skeleton";
 import { useEntryMutations } from "./use-entry-mutations";
 
-export type TimelineFilters = { q: string; tag: string | null; blockers: boolean; more: number };
+export type TimelineFilters = { q: string; blockers: boolean; more: number };
 
 export function TimelineView({
   entries,
-  tags,
   today,
   filters,
   hasMore,
   autoFocusSearch,
 }: {
   entries: EntryView[];
-  tags: string[];
   today: string;
   filters: TimelineFilters;
   hasMore: boolean;
@@ -36,15 +33,13 @@ export function TimelineView({
   const searchRef = useRef<HTMLInputElement>(null);
   const { items, update, remove } = useEntryMutations(entries);
   const groups = groupByDay(items);
-  const filtered = Boolean(filters.q || filters.tag || filters.blockers);
+  const filtered = Boolean(filters.q || filters.blockers);
 
   useEffect(() => {
     if (autoFocusSearch) searchRef.current?.focus();
   }, [autoFocusSearch]);
 
-  function navigate(
-    next: Partial<Record<"q" | "tag" | "blockers" | "more" | "focus", string | null>>,
-  ) {
+  function navigate(next: Partial<Record<"q" | "blockers" | "more" | "focus", string | null>>) {
     const sp = new URLSearchParams(params.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value) sp.set(key, value);
@@ -96,34 +91,20 @@ export function TimelineView({
             }}
             className="h-[38px] min-w-0 grow bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-          <Kbd className="hidden md:inline-flex" aria-hidden>
-            /
-          </Kbd>
         </div>
         <div
           role="group"
-          aria-label="Filter by tag"
+          aria-label="Filter entries"
           className="-mr-5 flex gap-2 overflow-x-auto pr-5 md:mr-0 md:flex-wrap md:pr-0"
         >
           <button
             type="button"
-            aria-pressed={!filters.tag && !filters.blockers}
-            className={cn(chip, !filters.tag && !filters.blockers && chipOn)}
-            onClick={() => navigate({ tag: null, blockers: null })}
+            aria-pressed={!filters.blockers}
+            className={cn(chip, !filters.blockers && chipOn)}
+            onClick={() => navigate({ blockers: null })}
           >
             All
           </button>
-          {tags.map((t) => (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={filters.tag === t}
-              className={cn(chip, filters.tag === t && chipOn)}
-              onClick={() => navigate({ tag: filters.tag === t ? null : t })}
-            >
-              {t}
-            </button>
-          ))}
           <button
             type="button"
             aria-pressed={filters.blockers}

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function logEntry(page: Page, text: string) {
-  const input = page.getByRole("combobox", { name: "New entry" });
+  const input = page.getByRole("textbox", { name: "New entry" });
   await input.fill(text);
   await input.press("Enter");
   await expect(input).toHaveValue("");
@@ -11,18 +11,18 @@ test.describe.configure({ mode: "serial" });
 
 test("log three entries, generate a standup, and copy it", async ({ page }) => {
   await page.goto("/today");
-  const input = page.getByRole("combobox", { name: "New entry" });
+  const input = page.getByRole("textbox", { name: "New entry" });
   await expect(input).toBeFocused();
+  await expect(page.getByText("flags a blocker")).toBeVisible();
 
-  await logEntry(page, "Fixed pagination bug in the invoices API #billing");
-  await logEntry(page, "Sprint planning, picked up three tickets #planning");
-  await logEntry(page, "Waiting on staging DB credentials #billing !blocker");
+  await logEntry(page, "Fixed pagination bug in the invoices API");
+  await logEntry(page, "Sprint planning, picked up three tickets");
+  await logEntry(page, "Waiting on staging DB credentials !blocker");
 
   await expect(page.getByRole("heading", { name: "3 entries today" })).toBeVisible();
   const list = page.getByRole("region", { name: "3 entries today" });
   await expect(list.getByText("Waiting on staging DB credentials")).toBeVisible();
   await expect(list.getByText("Blocker", { exact: true })).toBeVisible();
-  await expect(list.getByText("#billing")).toHaveCount(2);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "3 entries today" })).toBeVisible();
@@ -33,7 +33,6 @@ test("log three entries, generate a standup, and copy it", async ({ page }) => {
 
   const output = page.getByRole("textbox", { name: "Generated standup update, editable" });
   await expect(output).toContainText("Waiting on staging DB credentials");
-  await expect(page.getByText("Writing…")).toHaveCount(0);
   await expect(output).toHaveAttribute("contenteditable", "true");
   await expect(output.locator("strong")).toHaveText(["Yesterday", "Today", "Blockers"]);
   await expect(page.getByText("From 3 entries")).toBeVisible();
@@ -84,8 +83,8 @@ test("search, filter, edit and delete with undo on the timeline", async ({ page 
   await row.hover();
   await row.getByRole("button", { name: "Edit entry" }).click();
   const edit = page.getByRole("textbox", { name: "Edit entry" });
-  await expect(edit).toHaveValue("Sprint planning, picked up three tickets #planning");
-  await edit.fill("Sprint planning, picked up four tickets #planning");
+  await expect(edit).toHaveValue("Sprint planning, picked up three tickets");
+  await edit.fill("Sprint planning, picked up four tickets");
   await edit.press("Enter");
   await expect(page.getByText("Sprint planning, picked up four tickets")).toBeVisible();
 

@@ -74,12 +74,10 @@ export default async function LoginPage({
         </p>
         <div className="flex max-w-[440px] flex-col gap-0.5 rounded-lg border border-border bg-surface px-[18px] py-4 font-mono text-[13px] text-subtle-foreground">
           <span>
-            <span className="text-muted-foreground">10:20</span> Sprint planning{" "}
-            <span className="text-primary-soft-foreground">#planning</span>
+            <span className="text-muted-foreground">10:20</span> Sprint planning
           </span>
           <span>
-            <span className="text-muted-foreground">13:05</span> Fixed invoices pagination{" "}
-            <span className="text-primary-soft-foreground">#billing</span>
+            <span className="text-muted-foreground">13:05</span> Fixed invoices pagination
           </span>
           <span>
             <span className="text-muted-foreground">15:32</span> Waiting on DB creds{" "}

@@ -1,9 +1,13 @@
-import { formatDayMonth, formatShortDate } from "@/lib/dates";
-import type { GenerationType } from "@/lib/db/schema";
-import type { PromptEntry, PromptInput } from "./prompts/shared";
+import { formatDayMonth, formatShortDate, type DateRange, type ISODate } from "@/lib/dates";
+import type { Entry, GenerationType, StandupFormat } from "@/lib/db/schema";
 
-export const FALLBACK_VERSION = "plain.v1";
-export const FALLBACK_MODEL = "plain-template";
+export type OutputEntry = { date: ISODate; text: string; isBlocker: boolean };
+
+export type OutputInput = { entries: OutputEntry[]; range: DateRange; format: StandupFormat };
+
+export function toOutputEntry(entry: Entry): OutputEntry {
+  return { date: entry.entryDate, text: entry.text, isBlocker: entry.isBlocker };
+}
 
 const bullet = (text: string) => `– ${text}`;
 
@@ -11,7 +15,7 @@ function section(heading: string, lines: string[], empty: string): string {
   return [`**${heading}**`, ...(lines.length ? lines : [bullet(empty)])].join("\n");
 }
 
-function standup({ entries, range, format }: PromptInput): string {
+function standup({ entries, range, format }: OutputInput): string {
   const today = range.end;
   const blockers = entries.filter((e) => e.isBlocker);
   const earlier = entries.filter((e) => !e.isBlocker && e.date !== today);
@@ -29,7 +33,7 @@ function standup({ entries, range, format }: PromptInput): string {
   }
 
   if (format === "paragraph") {
-    const join = (list: PromptEntry[]) => list.map((e) => e.text.replace(/[.\s]+$/, "")).join("; ");
+    const join = (list: OutputEntry[]) => list.map((e) => e.text.replace(/[.\s]+$/, "")).join("; ");
     return [
       earlier.length ? `Yesterday: ${join(earlier)}.` : "",
       now.length ? `Today: ${join(now)}.` : "Nothing logged yet today.",
@@ -58,27 +62,14 @@ function standup({ entries, range, format }: PromptInput): string {
   ].join("\n\n");
 }
 
-function titleFromTag(tag: string): string {
-  const words = tag.replace(/^#/, "").split(/[-_]/).filter(Boolean);
-  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "Other";
-}
-
-function weekly({ entries }: PromptInput): string {
-  const groups = new Map<string, PromptEntry[]>();
-  for (const e of entries) {
-    const key = e.tags[0] ? titleFromTag(e.tags[0]) : "Other";
-    groups.set(key, [...(groups.get(key) ?? []), e]);
-  }
-  const ordered = [...groups.entries()].sort(
-    (a, b) => b[1].length - a[1].length || (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : 0),
-  );
-  return ordered
-    .map(([heading, list]) =>
+function weekly({ entries }: OutputInput): string {
+  const days = new Map<string, OutputEntry[]>();
+  for (const e of entries) days.set(e.date, [...(days.get(e.date) ?? []), e]);
+  return [...days.entries()]
+    .map(([date, list]) =>
       [
-        `**${heading}**`,
-        ...list.map((e) =>
-          bullet(`${e.isBlocker ? "Blocked: " : ""}${e.text} (${formatShortDate(e.date)})`),
-        ),
+        `**${formatShortDate(date)}**`,
+        ...list.map((e) => bullet(`${e.isBlocker ? "Blocked: " : ""}${e.text}`)),
       ].join("\n"),
     )
     .join("\n\n");
@@ -87,10 +78,10 @@ function weekly({ entries }: PromptInput): string {
 const COLLAB =
   /\b(pair(ed|ing)?|review(ed|ing)?|demo(ed)?|mentor(ed|ing)?|help(ed|ing)?|with|workshop|interview(ed)?|onboard(ed|ing)?)\b/i;
 
-function appraisal({ entries }: PromptInput): string {
+function appraisal({ entries }: OutputInput): string {
   const done = entries.filter((e) => !e.isBlocker);
   const collab = done.filter((e) => COLLAB.test(e.text));
-  const dated = (e: PromptEntry) => bullet(`${e.text} (${formatDayMonth(e.date)})`);
+  const dated = (e: OutputEntry) => bullet(`${e.text} (${formatDayMonth(e.date)})`);
   return [
     section(
       "Accomplishments",
@@ -103,7 +94,7 @@ function appraisal({ entries }: PromptInput): string {
   ].join("\n\n");
 }
 
-export function buildFallback(type: GenerationType, input: PromptInput): string {
+export function buildOutput(type: GenerationType, input: OutputInput): string {
   switch (type) {
     case "standup":
       return standup(input);

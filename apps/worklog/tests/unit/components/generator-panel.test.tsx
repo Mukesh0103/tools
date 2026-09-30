@@ -14,22 +14,8 @@ vi.mock("@/server/actions/settings", () => ({
 
 const NOW = new Date("2026-09-29T09:00:00Z");
 
-function streamResponse(chunks: string[], headers: Record<string, string> = {}) {
-  const encoder = new TextEncoder();
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const c of chunks) controller.enqueue(encoder.encode(c));
-      controller.close();
-    },
-  });
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "X-Generation-Id": "3f0b8f5e-6a7c-4d5e-9f10-111213141516",
-      "X-Entry-Count": "7",
-      ...headers,
-    },
-  });
+function generated(output: string) {
+  return Response.json({ id: "3f0b8f5e-6a7c-4d5e-9f10-111213141516", output, entryCount: 7 });
 }
 
 function renderPanel() {
@@ -40,7 +26,6 @@ function renderPanel() {
       defaultRanges={defaultRanges("UTC", NOW)}
       presets={rangePresets("UTC", NOW)}
       today="2026-09-29"
-      defaultTone="concise"
       standupFormat="ytb"
       autoStart={false}
     />,
@@ -61,13 +46,9 @@ afterEach(() => {
 });
 
 describe("GeneratorPanel", () => {
-  it("posts the selected type, range and tone, then streams text into the editable panel", async () => {
+  it("posts the selected type and range, then shows the text in the editable panel", async () => {
     fetchMock.mockResolvedValue(
-      streamResponse([
-        "**Yesterday**\n– Shipped",
-        " CSV export\n\n**Today**\n– Fixed",
-        " pagination",
-      ]),
+      generated("**Yesterday**\n– Shipped CSV export\n\n**Today**\n– Fixed pagination"),
     );
     const { user } = renderPanel();
 
@@ -84,28 +65,24 @@ describe("GeneratorPanel", () => {
     expect(JSON.parse(init.body)).toEqual({
       type: "standup",
       range: { start: "2026-09-28", end: "2026-09-29" },
-      tone: "concise",
       format: "ytb",
-      mode: "ai",
     });
   });
 
-  it("switches type and tone before generating", async () => {
-    fetchMock.mockResolvedValue(streamResponse(["**Billing**\nShipped export."]));
+  it("switches type before generating", async () => {
+    fetchMock.mockResolvedValue(generated("**Tue 29 Sep**\n– Shipped export"));
     const { user } = renderPanel();
     await user.click(screen.getByRole("button", { name: "Weekly" }));
-    await user.click(screen.getByRole("button", { name: "Detailed" }));
     await user.click(screen.getByRole("button", { name: /Generate/ }));
     await screen.findByRole("textbox");
     expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toMatchObject({
       type: "weekly",
-      tone: "detailed",
       range: { start: "2026-09-23", end: "2026-09-29" },
     });
   });
 
   it("copies the output and shows Copied", async () => {
-    fetchMock.mockResolvedValue(streamResponse(["**Today**\n– Fixed pagination"]));
+    fetchMock.mockResolvedValue(generated("**Today**\n– Fixed pagination"));
     const { user } = renderPanel();
     await user.click(screen.getByRole("button", { name: /Generate/ }));
     await waitFor(() =>
@@ -129,17 +106,24 @@ describe("GeneratorPanel", () => {
     expect(screen.getByRole("link", { name: "Log an entry" })).toHaveAttribute("href", "/today");
   });
 
-  it("offers the plain format when generation fails, and requests it", async () => {
+  it("shows an error with Retry when the request fails, and retries", async () => {
     fetchMock
-      .mockResolvedValueOnce(Response.json({ code: "AI_FAILED", message: "down" }, { status: 502 }))
-      .mockResolvedValueOnce(streamResponse(["**Yesterday**\n– Shipped CSV export"]));
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(generated("**Yesterday**\n– Shipped CSV export"));
     const { user } = renderPanel();
     await user.click(screen.getByRole("button", { name: /Generate/ }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn’t write your standup");
-    await user.click(screen.getByRole("button", { name: "Use plain format" }));
-    await screen.findByRole("textbox");
-    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ mode: "plain" });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn’t create your standup");
+    expect(screen.queryByRole("button", { name: "Use plain format" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("textbox")).toHaveTextContent("Shipped CSV export");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("has no tone control", () => {
+    renderPanel();
+    expect(screen.queryByRole("button", { name: "Detailed" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Tone")).not.toBeInTheDocument();
   });
 
   it("sends you to sign in when the session has expired", async () => {

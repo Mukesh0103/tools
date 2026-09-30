@@ -21,8 +21,6 @@ playwright-report/
 test-results/
 blob-report/
 **/playwright/.auth/
-**/tests/evals/.generated/
-.promptfoo/
 
 # misc
 .DS_Store

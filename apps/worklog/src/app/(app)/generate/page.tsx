@@ -45,7 +45,6 @@ export default async function GeneratePage({ searchParams }: { searchParams: Pro
       defaultRanges={defaultRanges(tz, now)}
       presets={rangePresets(tz, now)}
       today={todayInZone(tz, now)}
-      defaultTone={user?.settings.defaultTone ?? "concise"}
       standupFormat={user?.settings.standupFormat ?? "ytb"}
       autoStart={params.auto === "1" && !saved}
       saved={saved}

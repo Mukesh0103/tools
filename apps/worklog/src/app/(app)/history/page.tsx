@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
-import { outputPreview } from "@/lib/ai/output";
+import { outputPreview } from "@/lib/generate/output";
 import { requireUserId } from "@/lib/auth";
 import { formatRangeLabel, resolveTimeZone } from "@/lib/dates";
 import { listGenerations } from "@/lib/db/queries/generations";

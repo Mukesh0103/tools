@@ -1,4 +1,4 @@
-import { and, arrayContains, asc, count, desc, eq, gte, ilike, lt, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, lt, lte } from "drizzle-orm";
 import type { DateRange, ISODate } from "@/lib/dates";
 import { getDb } from "../client";
 import { entries, type Entry, type NewEntry } from "../schema";
@@ -48,7 +48,6 @@ export async function hasEntriesOn(userId: string, date: ISODate): Promise<boole
 
 export type TimelineFilter = {
   q?: string;
-  tag?: string;
   blockersOnly?: boolean;
   before?: ISODate;
   limit?: number;
@@ -67,7 +66,6 @@ export async function listTimeline(
   const limit = filter.limit ?? TIMELINE_PAGE_SIZE;
   const conditions = [eq(entries.userId, userId)];
   if (filter.q?.trim()) conditions.push(ilike(entries.text, `%${escapeLike(filter.q.trim())}%`));
-  if (filter.tag) conditions.push(arrayContains(entries.tags, [filter.tag]));
   if (filter.blockersOnly) conditions.push(eq(entries.isBlocker, true));
   if (filter.before) conditions.push(lt(entries.entryDate, filter.before));
 
@@ -89,18 +87,6 @@ export async function listTimeline(
   return { entries: page, hasMore };
 }
 
-export async function listTopTags(userId: string, limit = 12): Promise<string[]> {
-  const tag = sql<string>`unnest(${entries.tags})`;
-  const rows = await getDb()
-    .select({ tag, uses: count() })
-    .from(entries)
-    .where(eq(entries.userId, userId))
-    .groupBy(tag)
-    .orderBy(desc(count()), asc(tag))
-    .limit(limit);
-  return rows.map((r) => r.tag);
-}
-
 export async function insertEntry(values: NewEntry & { userId: string }): Promise<Entry> {
   const [row] = await getDb().insert(entries).values(values).returning();
   return row!;
@@ -109,7 +95,7 @@ export async function insertEntry(values: NewEntry & { userId: string }): Promis
 export async function updateEntry(
   userId: string,
   id: string,
-  values: Pick<Entry, "text" | "tags" | "isBlocker">,
+  values: Pick<Entry, "text" | "isBlocker">,
 ): Promise<Entry | undefined> {
   const [row] = await getDb()
     .update(entries)

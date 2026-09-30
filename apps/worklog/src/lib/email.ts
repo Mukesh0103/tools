@@ -1,6 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
-import { escapeHtml } from "./ai/output";
+import { escapeHtml } from "./generate/output";
 
 export function appUrl(): string {
   return (process.env.APP_URL || process.env.AUTH_URL || "http://localhost:3000").replace(

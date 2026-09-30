@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -79,10 +78,6 @@ export const entries = pgTable(
      *  created_at because people log yesterday's work the next morning. */
     entryDate: date({ mode: "string" }).notNull(),
     text: text().notNull(),
-    tags: text()
-      .array()
-      .notNull()
-      .default(sql`'{}'::text[]`),
     isBlocker: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true })
@@ -106,14 +101,11 @@ export const generations = pgTable(
     rangeStart: date({ mode: "string" }).notNull(),
     rangeEnd: date({ mode: "string" }).notNull(),
     output: text().notNull(),
-    promptVersion: text().notNull(),
-    model: text().notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("generations_user_created_idx").on(t.userId, t.createdAt)],
 );
 
-export const tone = pgEnum("tone", ["concise", "detailed"]);
 export const standupFormat = pgEnum("standup_format", ["ytb", "bullets", "paragraph"]);
 
 export const settings = pgTable("settings", {
@@ -124,7 +116,6 @@ export const settings = pgTable("settings", {
   reminderEnabled: boolean().notNull().default(false),
   /** Local calendar date of the last reminder sent, so the cron never double-sends. */
   lastRemindedOn: date({ mode: "string" }),
-  defaultTone: tone().notNull().default("concise"),
   standupFormat: standupFormat().notNull().default("ytb"),
 });
 
@@ -133,6 +124,5 @@ export type Entry = typeof entries.$inferSelect;
 export type NewEntry = typeof entries.$inferInsert;
 export type Generation = typeof generations.$inferSelect;
 export type GenerationType = (typeof generationType.enumValues)[number];
-export type Tone = (typeof tone.enumValues)[number];
 export type StandupFormat = (typeof standupFormat.enumValues)[number];
 export type Settings = typeof settings.$inferSelect;

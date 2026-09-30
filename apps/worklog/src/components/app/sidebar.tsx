@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Kbd } from "@/components/ui/kbd";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS, isActive } from "./nav-items";
@@ -32,7 +31,7 @@ export function Sidebar({ user }: { user: ShellUser }) {
         <Logo />
       </Link>
       <div className="flex flex-col gap-0.5">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, shortcut }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const on = isActive(pathname, href);
           return (
             <Link
@@ -47,7 +46,6 @@ export function Sidebar({ user }: { user: ShellUser }) {
             >
               <Icon className="size-[18px]" strokeWidth={1.75} aria-hidden />
               <span className="grow">{label}</span>
-              {shortcut ? <Kbd aria-hidden>{shortcut}</Kbd> : null}
             </Link>
           );
         })}

@@ -24,13 +24,12 @@ export async function GET(request: Request) {
 
   let body: string;
   if (format === "csv") {
-    const header = ["date", "time", "text", "tags", "blocker", "created_at"].map(csvCell).join(",");
+    const header = ["date", "time", "text", "blocker", "created_at"].map(csvCell).join(",");
     const lines = rows.map((e) =>
       [
         e.entryDate,
         timeInZone(e.createdAt, tz),
         e.text,
-        e.tags.join(" "),
         e.isBlocker ? "yes" : "no",
         e.createdAt.toISOString(),
       ]

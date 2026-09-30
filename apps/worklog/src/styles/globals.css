@@ -36,10 +36,6 @@
   --inverse-foreground: #f5f5f4;
   --inverse-accent: #a5b4fc;
 
-  --kbd-bg: #ffffff;
-  --kbd-border: #e7e5e4;
-  --kbd-foreground: #57534e;
-
   --avatar: #e0e7ff;
   --avatar-foreground: #3730a3;
   --logo-bg: #1c1917;
@@ -79,10 +75,6 @@
   --inverse-foreground: #1c1917;
   --inverse-accent: #4f46e5;
 
-  --kbd-bg: #1c1917;
-  --kbd-border: #44403c;
-  --kbd-foreground: #d6d3d1;
-
   --avatar: rgb(129 140 248 / 0.2);
   --avatar-foreground: #c7d2fe;
   --logo-bg: #f5f5f4;
@@ -120,9 +112,6 @@
   --color-inverse-foreground: var(--inverse-foreground);
   --color-inverse-accent: var(--inverse-accent);
 
-  --color-kbd: var(--kbd-bg);
-  --color-kbd-border: var(--kbd-border);
-  --color-kbd-foreground: var(--kbd-foreground);
   --color-avatar: var(--avatar);
   --color-avatar-foreground: var(--avatar-foreground);
   --color-logo: var(--logo-bg);
@@ -148,14 +137,7 @@
   --radius-md: 6px;
   --radius-lg: var(--radius);
 
-  --animate-blink: blink 1s steps(1) infinite;
   --animate-fresh: fresh 2.4s ease-out forwards;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
 }
 
 @keyframes fresh {

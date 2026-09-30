@@ -1,26 +1,23 @@
 {
-  "description": "Two quiet days, no blockers and no tags. The standup must say 'None' rather than invent a blocker.",
+  "description": "Two quiet days and no blockers. The standup must say 'None' rather than invent a blocker.",
   "today": "2026-09-29",
   "entries": [
     {
       "date": "2026-09-28",
       "time": "10:00",
       "text": "Updated onboarding docs for the billing service",
-      "tags": [],
       "isBlocker": false
     },
     {
       "date": "2026-09-28",
       "time": "15:00",
       "text": "Triaged 6 support tickets",
-      "tags": [],
       "isBlocker": false
     },
     {
       "date": "2026-09-29",
       "time": "09:40",
       "text": "Started on the invoice PDF redesign",
-      "tags": [],
       "isBlocker": false
     }
   ]

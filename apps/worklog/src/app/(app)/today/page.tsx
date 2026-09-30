@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { TodayView } from "@/components/entries/today-view";
 import { requireUserId } from "@/lib/auth";
 import { compareDates, isISODate, resolveTimeZone, todayInZone } from "@/lib/dates";
-import { listEntriesForDay, listTopTags } from "@/lib/db/queries/entries";
+import { listEntriesForDay } from "@/lib/db/queries/entries";
 import { getUserWithSettings } from "@/lib/db/queries/users";
 import { toEntryView } from "@/lib/entry-view";
 
@@ -20,15 +20,9 @@ export default async function TodayPage({
   const date =
     isISODate(params.date) && compareDates(params.date, today) <= 0 ? params.date : today;
 
-  const [rows, tags] = await Promise.all([listEntriesForDay(userId, date), listTopTags(userId)]);
+  const rows = await listEntriesForDay(userId, date);
 
   return (
-    <TodayView
-      key={date}
-      date={date}
-      today={today}
-      entries={rows.map((r) => toEntryView(r, tz))}
-      knownTags={tags}
-    />
+    <TodayView key={date} date={date} today={today} entries={rows.map((r) => toEntryView(r, tz))} />
   );
 }

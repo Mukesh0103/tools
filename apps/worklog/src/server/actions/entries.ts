@@ -37,7 +37,7 @@ export async function createEntry(input: unknown): Promise<ActionResult<EntryVie
     return { ok: false, error: "You can't log work for a future day." };
   }
   const entry = parseEntry(parsed.data.raw);
-  if (!entry.text) return { ok: false, error: "Add a few words besides tags." };
+  if (!entry.text) return { ok: false, error: "Add a few words besides !blocker." };
 
   try {
     const row = await q.insertEntry({
@@ -45,7 +45,6 @@ export async function createEntry(input: unknown): Promise<ActionResult<EntryVie
       userId,
       entryDate: parsed.data.entryDate,
       text: entry.text,
-      tags: entry.tags,
       isBlocker: entry.isBlocker,
     });
     revalidateEntries();
@@ -63,7 +62,7 @@ export async function updateEntry(input: unknown): Promise<ActionResult<EntryVie
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid entry" };
 
   const entry = parseEntry(parsed.data.raw);
-  if (!entry.text) return { ok: false, error: "Add a few words besides tags." };
+  if (!entry.text) return { ok: false, error: "Add a few words besides !blocker." };
 
   const row = await q.updateEntry(userId, parsed.data.id, entry);
   if (!row) return { ok: false, error: "That entry no longer exists." };

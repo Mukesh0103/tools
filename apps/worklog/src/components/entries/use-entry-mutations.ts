@@ -59,7 +59,7 @@ export function useEntryMutations(entries: EntryView[]) {
           const res = await createEntry({ raw, entryDate, id });
           if (res.ok) {
             setFreshId(id);
-            track("entry_created", { tags: parsed.tags.length, blocker: parsed.isBlocker });
+            track("entry_created", { blocker: parsed.isBlocker });
             resolve({ ok: true });
           } else {
             track("entry_failed");

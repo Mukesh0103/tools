@@ -5,7 +5,7 @@ import {
   outputToHtml,
   outputToPlainText,
   sectionHeadings,
-} from "@/lib/ai/output";
+} from "@/lib/generate/output";
 import { clipboardPayload } from "@/components/generate/output-format";
 
 const sample =

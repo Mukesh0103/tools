@@ -9,7 +9,6 @@ const defaults = (userId: string): Settings => ({
   reminderTime: "18:00:00",
   reminderEnabled: false,
   lastRemindedOn: null,
-  defaultTone: "concise",
   standupFormat: "ytb",
 });
 

@@ -7,20 +7,16 @@ import { OutputPanel, type OutputPanelHandle } from "@/components/generate/outpu
 const TEXT = "**Yesterday**\n– Shipped CSV export\n\n**Blockers**\n– None";
 
 describe("OutputPanel", () => {
-  it("renders headings in bold and shows a cursor while streaming, read-only", () => {
-    render(<OutputPanel text={TEXT} streaming version={1} label="Generated standup, editable" />);
+  it("renders headings in bold, editable in place", () => {
+    render(<OutputPanel text={TEXT} version={1} label="Generated standup, editable" />);
     const box = screen.getByRole("textbox", { name: "Generated standup, editable" });
     expect(box.querySelector("strong")?.textContent).toBe("Yesterday");
-    expect(box).toHaveAttribute("contenteditable", "false");
-    expect(box).toHaveAttribute("aria-busy", "true");
-    expect(box.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    expect(box).toHaveAttribute("contenteditable", "true");
   });
 
-  it("becomes editable when streaming ends and keeps the user's edits", () => {
+  it("keeps the user's edits until a new generation replaces them", () => {
     const ref = createRef<OutputPanelHandle>();
-    const { rerender } = render(
-      <OutputPanel ref={ref} text={TEXT} streaming={false} version={1} label="Output" />,
-    );
+    const { rerender } = render(<OutputPanel ref={ref} text={TEXT} version={1} label="Output" />);
     const box = screen.getByRole("textbox");
     expect(box).toHaveAttribute("contenteditable", "true");
     expect(ref.current?.getText()).toBe(TEXT);
@@ -29,26 +25,18 @@ describe("OutputPanel", () => {
       box.innerHTML = "<strong>Yesterday</strong>\n– Shipped CSV export for invoices";
       box.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    rerender(<OutputPanel ref={ref} text={TEXT} streaming={false} version={1} label="Output" />);
+    rerender(<OutputPanel ref={ref} text={TEXT} version={1} label="Output" />);
     expect(ref.current?.isEdited()).toBe(true);
     expect(ref.current?.getText()).toBe("**Yesterday**\n– Shipped CSV export for invoices");
 
-    rerender(
-      <OutputPanel
-        ref={ref}
-        text={"**Today**\n– New"}
-        streaming={false}
-        version={2}
-        label="Output"
-      />,
-    );
+    rerender(<OutputPanel ref={ref} text={"**Today**\n– New"} version={2} label="Output" />);
     expect(ref.current?.isEdited()).toBe(false);
     expect(ref.current?.getText()).toBe("**Today**\n– New");
   });
 
   it("reads back lines the browser split into divs while editing", () => {
     const ref = createRef<OutputPanelHandle>();
-    render(<OutputPanel ref={ref} text="" streaming={false} version={1} label="Output" />);
+    render(<OutputPanel ref={ref} text="" version={1} label="Output" />);
     const box = screen.getByRole("textbox");
     act(() => {
       box.innerHTML = "<strong>Today</strong><div>– One</div><div>– Two<br></div>";

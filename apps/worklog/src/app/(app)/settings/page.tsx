@@ -35,7 +35,6 @@ export default async function SettingsPage() {
         timezone: tz,
         reminderEnabled: user.settings.reminderEnabled,
         reminderTime: user.settings.reminderTime.slice(0, 5),
-        defaultTone: user.settings.defaultTone,
         standupFormat: user.settings.standupFormat,
       }}
     />

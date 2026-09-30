@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { EntryInput } from "@/components/entries/entry-input";
 
-function setup(onSubmit = vi.fn().mockResolvedValue({ ok: true }), knownTags: string[] = []) {
+function setup(onSubmit = vi.fn().mockResolvedValue({ ok: true })) {
   const user = userEvent.setup();
-  render(<EntryInput onSubmit={onSubmit} knownTags={knownTags} />);
-  const input = screen.getByRole("combobox", { name: "New entry" }) as HTMLInputElement;
+  render(<EntryInput onSubmit={onSubmit} />);
+  const input = screen.getByRole("textbox", { name: "New entry" }) as HTMLInputElement;
   return { user, input, onSubmit };
 }
 
@@ -30,12 +30,12 @@ describe("EntryInput", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("asks for words when the line is only tags", async () => {
+  it("asks for words when the line is only !blocker", async () => {
     const { user, input, onSubmit } = setup();
-    await user.type(input, "#billing !blocker{Enter}");
+    await user.type(input, "!blocker{Enter}");
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Add a few words besides tags.");
-    expect(input).toHaveValue("#billing !blocker");
+    expect(screen.getByRole("alert")).toHaveTextContent("Add a few words besides !blocker.");
+    expect(input).toHaveValue("!blocker");
   });
 
   it("brings the text back with a Retry when saving fails", async () => {
@@ -67,25 +67,9 @@ describe("EntryInput", () => {
     expect(input).not.toHaveFocus();
   });
 
-  it("suggests known tags and accepts one with Tab", async () => {
-    const { user, input } = setup(undefined, ["#infra", "#invoices", "#billing"]);
-    await user.type(input, "Fixed flaky tests #in");
-    const options = screen.getAllByRole("option");
-    expect(options.map((o) => o.textContent)).toEqual(["#infraTab", "#invoices", "Create “#in”"]);
-    expect(options[0]).toHaveAttribute("aria-selected", "true");
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
-    await user.keyboard("{Tab}");
-    expect(input).toHaveValue("Fixed flaky tests #invoices ");
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-  });
-
-  it("closes suggestions on Escape without clearing the draft", async () => {
-    const { user, input } = setup(undefined, ["#infra"]);
+  it("offers no suggestions when typing #", async () => {
+    const { user, input } = setup();
     await user.type(input, "Fixed #in");
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
-    await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(input).toHaveValue("Fixed #in");
   });

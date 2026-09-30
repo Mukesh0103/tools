@@ -30,13 +30,11 @@ export const restoreEntrySchema = z.object({
   id: z.uuid(),
   entryDate: isoDate,
   text: z.string().min(1).max(MAX_ENTRY_LENGTH),
-  tags: z.array(z.string().max(64)).max(10),
   isBlocker: z.boolean(),
   createdAt: z.coerce.date(),
 });
 
 export const generationTypeSchema = z.enum(["standup", "weekly", "appraisal"]);
-export const toneSchema = z.enum(["concise", "detailed"]);
 export const standupFormatSchema = z.enum(["ytb", "bullets", "paragraph"]);
 
 export const dateRangeSchema = z
@@ -47,9 +45,7 @@ export const dateRangeSchema = z
 export const generateRequestSchema = z.object({
   type: generationTypeSchema,
   range: dateRangeSchema,
-  tone: toneSchema,
   format: standupFormatSchema.optional(),
-  mode: z.enum(["ai", "plain"]).default("ai"),
 });
 
 export const timeZoneSchema = z
@@ -62,7 +58,6 @@ export const settingsSchema = z.object({
   timezone: timeZoneSchema,
   reminderEnabled: z.boolean(),
   reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM"),
-  defaultTone: toneSchema,
   standupFormat: standupFormatSchema,
 });
 

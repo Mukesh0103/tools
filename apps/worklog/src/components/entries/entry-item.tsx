@@ -2,9 +2,8 @@
 
 import { Check, Pencil, Trash } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { BlockerBadge, TagChip } from "@/components/ui/chips";
+import { BlockerBadge } from "@/components/ui/chips";
 import { Button } from "@/components/ui/button";
-import { Kbd } from "@/components/ui/kbd";
 import type { EntryView } from "@/lib/entry-view";
 import { serializeEntry } from "@/lib/parse-entry";
 import { cn } from "@/lib/utils";
@@ -73,12 +72,6 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
           onBlur={commit}
           className="h-7 min-w-0 grow bg-transparent text-[15px] outline-none"
         />
-        <div
-          className="hidden shrink-0 items-center gap-2 text-xs text-muted-foreground sm:flex"
-          aria-hidden
-        >
-          <Kbd>↵</Kbd>save<Kbd>Esc</Kbd>cancel
-        </div>
       </div>
     );
   }
@@ -97,9 +90,6 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
       </span>
       <div className="flex min-w-0 grow flex-wrap items-center gap-x-2 gap-y-1.5 leading-[22px]">
         <span className="text-[15px] break-words">{entry.text}</span>
-        {entry.tags.map((tag) => (
-          <TagChip key={tag} tag={tag} />
-        ))}
         {entry.isBlocker ? <BlockerBadge /> : null}
         {showSaved ? (
           <span className="inline-flex items-center gap-1 text-xs text-primary" role="status">

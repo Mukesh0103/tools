@@ -5,7 +5,6 @@ export type EntryView = {
   id: string;
   entryDate: string;
   text: string;
-  tags: string[];
   isBlocker: boolean;
   createdAt: string;
   time: string;
@@ -16,7 +15,6 @@ export function toEntryView(entry: Entry, tz: string): EntryView {
     id: entry.id,
     entryDate: entry.entryDate,
     text: entry.text,
-    tags: entry.tags,
     isBlocker: entry.isBlocker,
     createdAt: entry.createdAt.toISOString(),
     time: timeInZone(entry.createdAt, tz),

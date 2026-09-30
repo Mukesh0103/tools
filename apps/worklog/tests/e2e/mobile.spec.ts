@@ -2,11 +2,14 @@ import { expect, test } from "@playwright/test";
 
 test("today works at 375px with the docked input and bottom tabs", async ({ page }) => {
   await page.goto("/today");
-  const input = page.getByRole("combobox", { name: "New entry" });
+  const input = page.getByRole("textbox", { name: "New entry" });
   await expect(input).toBeVisible();
   await expect(input).not.toBeFocused();
 
-  await input.fill("Logged from my phone #mobile");
+  await page.getByRole("button", { name: "!blocker" }).click();
+  await expect(input).toHaveValue("!blocker ");
+
+  await input.fill("Logged from my phone");
   await page.getByRole("button", { name: "Save entry" }).click();
   await expect(
     page.locator("[data-entry-id]").filter({ hasText: "Logged from my phone" }),
