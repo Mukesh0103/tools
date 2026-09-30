@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 
-/** Three lines, the middle one indigo: a log. */
 export function LogoMark({ size = 24, className }: { size?: number; className?: string }) {
   const pad = Math.round(size / 4);
   return (

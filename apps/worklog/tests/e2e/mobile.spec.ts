@@ -4,7 +4,6 @@ test("today works at 375px with the docked input and bottom tabs", async ({ page
   await page.goto("/today");
   const input = page.getByRole("combobox", { name: "New entry" });
   await expect(input).toBeVisible();
-  // Phones don't autofocus, which would pop the keyboard over the list.
   await expect(input).not.toBeFocused();
 
   await input.fill("Logged from my phone #mobile");

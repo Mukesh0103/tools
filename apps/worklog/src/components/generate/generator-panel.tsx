@@ -18,8 +18,8 @@ import { copyOutput } from "./output-format";
 import { OutputPanel, type OutputPanelHandle } from "./output-panel";
 import { RangePicker, type RangePreset } from "./range-picker";
 
-const TYPES: { value: GenerationType; label: string; title: string; shortcut: string }[] = [
-  { value: "standup", label: "Standup", title: "Standup update", shortcut: "G S" },
+const TYPES: { value: GenerationType; label: string; title: string; shortcut?: string }[] = [
+  { value: "standup", label: "Standup", title: "Standup update" },
   { value: "weekly", label: "Weekly", title: "Weekly summary", shortcut: "G W" },
   { value: "appraisal", label: "Appraisal", title: "Appraisal notes", shortcut: "G A" },
 ];
@@ -222,7 +222,6 @@ export function GeneratorPanel({
     }
   }, [text, current.label, type]);
 
-  // Shortcuts on this page: ⌘/Ctrl+C with nothing selected copies the output, and G then S/W/A comes from ShortcutProvider.
   const onKeydown = useCallback(
     (event: KeyboardEvent) => {
       if (
@@ -367,9 +366,11 @@ export function GeneratorPanel({
         >
           <Sparkles className="size-4" strokeWidth={1.75} aria-hidden />
           Generate
-          <Kbd className="hidden md:inline-flex" aria-hidden>
-            {current.shortcut}
-          </Kbd>
+          {current.shortcut ? (
+            <Kbd className="hidden md:inline-flex" aria-hidden>
+              {current.shortcut}
+            </Kbd>
+          ) : null}
         </Button>
       </section>
 
@@ -456,7 +457,6 @@ export function GeneratorPanel({
         </div>
       </section>
 
-      {/* Mobile actions sit under the panel, within thumb reach. */}
       {status === "done" || status === "streaming" ? (
         <div className="grid grid-cols-2 gap-2 md:hidden">
           {streaming ? (

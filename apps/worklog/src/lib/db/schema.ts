@@ -26,7 +26,6 @@ export const users = pgTable("users", {
   email: text().unique(),
   emailVerified: timestamp({ mode: "date", withTimezone: true }),
   image: text(),
-  /** IANA zone, e.g. "Asia/Kolkata". Null until the browser reports one. */
   timezone: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
@@ -68,8 +67,6 @@ export const verificationTokens = pgTable(
   },
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
-
-/* ─── App tables ──────────────────────────────────────────────────────────── */
 
 export const entries = pgTable(
   "entries",
@@ -123,7 +120,6 @@ export const settings = pgTable("settings", {
   userId: text()
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
-  /** Local wall-clock time, "HH:MM:SS". */
   reminderTime: time().notNull().default("18:00:00"),
   reminderEnabled: boolean().notNull().default(false),
   /** Local calendar date of the last reminder sent, so the cron never double-sends. */

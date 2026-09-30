@@ -116,7 +116,6 @@ describe("GeneratorPanel", () => {
     // user-event installs its own clipboard stub, so read back through it.
     expect(await navigator.clipboard.readText()).toBe("Today\n– Fixed pagination");
     expect(screen.getAllByRole("button", { name: /Copied/ }).length).toBeGreaterThan(0);
-    // Not edited, so no save.
     expect(saveGenerationEdit).not.toHaveBeenCalled();
   });
 

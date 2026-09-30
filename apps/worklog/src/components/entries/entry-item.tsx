@@ -17,11 +17,6 @@ export type EntryItemProps = {
   onDelete: (entry: EntryView) => void;
 };
 
-/**
- * One logged line. Edit and delete appear on hover, on keyboard focus, and on
- * tap on touch screens. Editing is inline: Enter saves, Escape cancels, and
- * clicking away keeps the change.
- */
 export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -29,7 +24,6 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Only the newest entry says "Saved". Logging another line clears it from this one.
     if (!fresh) {
       setShowSaved(false);
       return;
@@ -114,7 +108,6 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
           </span>
         ) : null}
       </div>
-      {/* Desktop: revealed on hover or focus. Phones: hidden until the row is tapped, so text gets the full width. */}
       <div className="-mt-[5px] flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 max-md:hidden max-md:opacity-100 max-md:group-focus-within:flex">
         <Button variant="icon" size="icon" aria-label="Edit entry" onClick={startEdit}>
           <Pencil className="size-4" strokeWidth={1.75} />

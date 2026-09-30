@@ -85,7 +85,6 @@ export function SettingsForm({
 
   useEffect(() => setMounted(true), []);
 
-  // Autosave: every valid change is saved about half a second after it's made.
   useEffect(() => {
     if (first.current) {
       first.current = false;
@@ -201,7 +200,7 @@ export function SettingsForm({
           <RowLabel
             id="fmt-l"
             title="Default standup format"
-            description="Used when you press G then S"
+            description="Used for every standup you generate"
           />
           <Controller
             control={form.control}

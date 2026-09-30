@@ -8,11 +8,6 @@ declare module "vitest" {
   }
 }
 
-/**
- * One Postgres for the whole integration run. Starts a Testcontainer by
- * default. Set TEST_DATABASE_URL, for example to a Neon branch, to use an
- * existing database instead.
- */
 export default async function setup(project: TestProject) {
   let container: StartedPostgreSqlContainer | undefined;
   let url = process.env.TEST_DATABASE_URL;

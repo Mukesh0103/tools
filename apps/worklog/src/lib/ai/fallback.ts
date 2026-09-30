@@ -1,8 +1,3 @@
-/**
- * The plain format: entries listed as written, no model involved. Used when
- * the AI is unavailable or fails, and in mock mode. Output follows the same
- * shape as model output (see output.ts).
- */
 import { formatDayMonth, formatShortDate } from "@/lib/dates";
 import type { GenerationType } from "@/lib/db/schema";
 import type { PromptEntry, PromptInput } from "./prompts/shared";

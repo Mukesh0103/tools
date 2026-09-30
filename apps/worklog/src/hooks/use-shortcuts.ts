@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 
-/** True when a keypress should go to the text field, not to app shortcuts. */
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -16,9 +15,8 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export const GENERATE_EVENT = "worklog:generate";
-export type GenerateShortcutType = "standup" | "weekly" | "appraisal";
+export type GenerateShortcutType = "weekly" | "appraisal";
 
-/** Listens for a keydown on window and cleans up on unmount. */
 export function useWindowKeydown(handler: (event: KeyboardEvent) => void) {
   useEffect(() => {
     window.addEventListener("keydown", handler);

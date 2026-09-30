@@ -1,7 +1,6 @@
 import { timeInZone } from "./dates";
 import type { Entry } from "./db/schema";
 
-/** What the client receives for an entry: serializable, with the local time pre-rendered. */
 export type EntryView = {
   id: string;
   entryDate: string;
@@ -9,7 +8,6 @@ export type EntryView = {
   tags: string[];
   isBlocker: boolean;
   createdAt: string;
-  /** "HH:mm" in the user's zone */
   time: string;
 };
 
@@ -27,7 +25,6 @@ export function toEntryView(entry: Entry, tz: string): EntryView {
 
 export type DayGroup = { date: string; entries: EntryView[] };
 
-/** Groups entries (already sorted newest first) by calendar day, keeping order. */
 export function groupByDay(entries: EntryView[]): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const entry of entries) {

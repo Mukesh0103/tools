@@ -22,7 +22,7 @@ export type ReminderCandidate = {
 export function isReminderDue(opts: {
   now: Date;
   timezone: string;
-  reminderTime: string; // "HH:MM" or "HH:MM:SS"
+  reminderTime: string;
   lastRemindedOn: string | null;
 }): boolean {
   const localDate = todayInZone(opts.timezone, opts.now);
@@ -31,7 +31,6 @@ export function isReminderDue(opts: {
   return localTime >= opts.reminderTime.slice(0, 5);
 }
 
-/** Users with reminders on, due now, who haven't logged anything today. */
 export async function listDueReminders(now: Date = new Date()): Promise<ReminderCandidate[]> {
   const rows = await getDb()
     .select({

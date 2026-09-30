@@ -71,7 +71,6 @@ export async function generateModelText(call: ModelCall): Promise<string> {
   return result.text;
 }
 
-/** Mock mode streams a known text in small word chunks, so the UI can be built and tested offline. */
 export async function* streamMockText(
   text: string,
   signal?: AbortSignal,

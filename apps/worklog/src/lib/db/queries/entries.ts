@@ -50,7 +50,6 @@ export type TimelineFilter = {
   q?: string;
   tag?: string;
   blockersOnly?: boolean;
-  /** Only entries dated strictly before this day, for "Show older". */
   before?: ISODate;
   limit?: number;
 };
@@ -90,7 +89,6 @@ export async function listTimeline(
   return { entries: page, hasMore };
 }
 
-/** The user's tags, most used first. Powers filter chips and autocomplete. */
 export async function listTopTags(userId: string, limit = 12): Promise<string[]> {
   const tag = sql<string>`unnest(${entries.tags})`;
   const rows = await getDb()

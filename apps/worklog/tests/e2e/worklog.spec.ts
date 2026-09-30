@@ -24,15 +24,12 @@ test("log three entries, generate a standup, and copy it", async ({ page }) => {
   await expect(list.getByText("Blocker", { exact: true })).toBeVisible();
   await expect(list.getByText("#billing")).toHaveCount(2);
 
-  // Entries persist across a reload.
   await page.reload();
   await expect(page.getByRole("heading", { name: "3 entries today" })).toBeVisible();
 
-  // Keyboard: G then S generates a standup from anywhere.
-  await page.locator("body").press("Escape");
-  await page.keyboard.press("g");
-  await page.keyboard.press("s");
-  await page.waitForURL(/\/generate/);
+  await page.getByRole("link", { name: /Generate standup/ }).click();
+  await page.waitForURL(/\/generate\?type=standup/);
+  await page.getByRole("button", { name: "Generate", exact: true }).click();
 
   const output = page.getByRole("textbox", { name: "Generated standup update, editable" });
   await expect(output).toContainText("Waiting on staging DB credentials");
@@ -41,7 +38,6 @@ test("log three entries, generate a standup, and copy it", async ({ page }) => {
   await expect(output.locator("strong")).toHaveText(["Yesterday", "Today", "Blockers"]);
   await expect(page.getByText("From 3 entries")).toBeVisible();
 
-  // The output is editable in place, and the edit is what gets copied.
   await output.click();
   await output.evaluate((el) => {
     const range = document.createRange();
@@ -57,7 +53,6 @@ test("log three entries, generate a standup, and copy it", async ({ page }) => {
   expect(clip).toContain("Blockers\n– Waiting on staging DB credentials (pinged infra)");
   expect(clip).not.toContain("**");
 
-  // It's kept in History, edit included.
   await page.getByRole("link", { name: "History" }).first().click();
   const row = page
     .getByRole("listitem")
@@ -72,7 +67,6 @@ test("search, filter, edit and delete with undo on the timeline", async ({ page 
   await page.goto("/timeline");
   await expect(page.getByRole("heading", { name: "Timeline" })).toBeVisible();
 
-  // "/" focuses search.
   await page.locator("body").press("/");
   const search = page.getByRole("searchbox", { name: "Search entries" });
   await expect(search).toBeFocused();
@@ -86,7 +80,6 @@ test("search, filter, edit and delete with undo on the timeline", async ({ page 
   await expect(page.getByText("Fixed pagination bug in the invoices API")).toHaveCount(0);
   await page.getByRole("button", { name: "All", exact: true }).click();
 
-  // Inline edit: Enter saves.
   const row = page.locator("[data-entry-id]").filter({ hasText: "Sprint planning" });
   await row.hover();
   await row.getByRole("button", { name: "Edit entry" }).click();
@@ -96,7 +89,6 @@ test("search, filter, edit and delete with undo on the timeline", async ({ page 
   await edit.press("Enter");
   await expect(page.getByText("Sprint planning, picked up four tickets")).toBeVisible();
 
-  // Delete, then undo.
   const edited = page.locator("[data-entry-id]").filter({ hasText: "four tickets" });
   await edited.hover();
   await edited.getByRole("button", { name: "Delete entry" }).click();

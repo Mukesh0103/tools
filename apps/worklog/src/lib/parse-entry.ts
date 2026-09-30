@@ -35,7 +35,6 @@ export function parseEntry(raw: string): ParsedEntry {
   return { text: rest.join(" "), tags, isBlocker };
 }
 
-/** The inverse, for inline editing: puts tags and the blocker flag back into the line. */
 export function serializeEntry(entry: {
   text: string;
   tags: string[];
@@ -44,10 +43,6 @@ export function serializeEntry(entry: {
   return [entry.text, ...entry.tags, entry.isBlocker ? "!blocker" : ""].filter(Boolean).join(" ");
 }
 
-/**
- * The partial `#tag` under the caret, for autocomplete.
- * Returns the query without "#" and where the token starts, or null.
- */
 export function tagQueryAt(value: string, caret: number): { query: string; start: number } | null {
   const before = value.slice(0, caret);
   const match = /(^|\s)#([\p{L}\p{N}_-]*)$/u.exec(before);

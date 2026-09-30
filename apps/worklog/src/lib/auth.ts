@@ -21,7 +21,6 @@ declare module "next-auth" {
 
 export type AuthProviderId = "github" | "google" | "resend" | "test-login";
 
-/** Which sign-in methods are configured. The login page renders only these. */
 export function enabledProviders(): AuthProviderId[] {
   const ids: AuthProviderId[] = [];
   if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) ids.push("github");
@@ -63,7 +62,6 @@ function buildProviders(): Provider[] {
       Resend({
         apiKey: apiKey ?? "dev-no-key",
         from: process.env.EMAIL_FROM ?? "Worklog <onboarding@resend.dev>",
-        // No key in development: print the link instead of sending it.
         ...(apiKey
           ? {}
           : {
@@ -130,7 +128,6 @@ export async function requireUserId(): Promise<string> {
   return id;
 }
 
-/** Like `requireUserId`, but returns null instead of redirecting. For route handlers that answer 401. */
 export async function currentUserId(): Promise<string | null> {
   const session = await auth();
   return session?.user?.id ?? null;

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { adoptBrowserTimezone } from "@/server/actions/settings";
 
-/** Saves the browser's zone the first time an account has none. */
 export function TimezoneSync({ hasTimezone }: { hasTimezone: boolean }) {
   useEffect(() => {
     if (hasTimezone) return;

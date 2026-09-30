@@ -3,7 +3,6 @@
 import { Check } from "lucide-react";
 import { Toaster as Sonner } from "sonner";
 
-/** Bottom-center, dark, auto-dismisses. The design's "Copied" toast. */
 export function Toaster() {
   return (
     <Sonner

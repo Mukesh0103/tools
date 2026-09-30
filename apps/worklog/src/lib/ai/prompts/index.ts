@@ -9,7 +9,6 @@ export * from "./standup.v1";
 export * from "./weekly.v1";
 export * from "./appraisal.v1";
 
-/** Single-pass builders. Long appraisal ranges go through the month pass in pipeline.ts. */
 export const PROMPT_BUILDERS: Record<GenerationType, (input: PromptInput) => BuiltPrompt> = {
   standup: buildStandupPrompt,
   weekly: buildWeeklyPrompt,

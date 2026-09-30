@@ -10,18 +10,10 @@ import {
 } from "@/hooks/use-shortcuts";
 
 const SECOND_KEY: Record<string, GenerateShortcutType> = {
-  s: "standup",
   w: "weekly",
   a: "appraisal",
 };
 
-/**
- * Global shortcuts:
- *   N          focus the entry input (on Today)
- *   /          search the timeline
- *   G then S   generate a standup; W weekly; A appraisal
- * Enter, Escape and ⌘C belong to the components that own them.
- */
 export function ShortcutProvider() {
   const router = useRouter();
   const pathname = usePathname();

@@ -13,7 +13,6 @@ export type AnalyticsEvent =
 
 let client: PostHog | null = null;
 
-/** Loads PostHog only when a key is configured, so it never weighs down the bundle otherwise. */
 export async function initAnalytics(key: string, host: string) {
   if (client) return;
   const { default: posthog } = await import("posthog-js");

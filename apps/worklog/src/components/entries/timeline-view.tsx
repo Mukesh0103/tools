@@ -56,7 +56,6 @@ export function TimelineView({
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
   }
 
-  // Debounced search: the URL, and so the server query, follows what's typed.
   useEffect(() => {
     if (query === filters.q) return;
     const t = window.setTimeout(() => navigate({ q: query.trim() || null }), 250);

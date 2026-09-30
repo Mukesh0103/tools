@@ -1,7 +1,6 @@
 import { expect, test as setup } from "@playwright/test";
 import { AUTH_FILE, TEST_LOGIN_SECRET } from "../../playwright.config";
 
-// A fresh user per run keeps assertions independent of earlier runs.
 setup("sign in with the test provider", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();

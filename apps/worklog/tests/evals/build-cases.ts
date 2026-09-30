@@ -1,8 +1,3 @@
-/**
- * Builds promptfoo test cases from the real prompt builders and the entry
- * fixtures, so evals always exercise the prompts the app actually sends.
- * Writes tests/evals/.generated/tests.json. Run with `pnpm evals`.
- */
 import { mkdirSync, writeFileSync } from "node:fs";
 import {
   PROMPT_BUILDERS,

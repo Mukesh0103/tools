@@ -3,7 +3,7 @@
 Log one line per task. Worklog turns those lines into a **standup**, a **weekly summary** or **appraisal notes**, streamed by Claude into an editable box you can copy straight to Slack.
 
 - **Logging takes under five seconds.** The input is focused on load, Enter saves, `#tag` adds a tag, `!blocker` flags a blocker.
-- **Keyboard-first.** `N` focuses the input, `/` searches the timeline, `G` then `S`/`W`/`A` generates, and `⌘/Ctrl C` copies the output.
+- **Keyboard-first.** `N` focuses the input, `/` searches the timeline, `G` then `W`/`A` generates a weekly summary or appraisal notes, and `⌘/Ctrl C` copies the output.
 - **Calm, dense and mobile-ready.** Every screen works at 375 px, in light and dark.
 - **Output is editable.** Generated text lands in an editable box. Your edits are what gets copied and saved.
 

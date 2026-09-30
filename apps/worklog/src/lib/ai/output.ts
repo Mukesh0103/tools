@@ -22,7 +22,6 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Safe HTML for the output panel and for rich clipboard pastes. Newlines are kept (render with pre-line). */
 export function outputToHtml(text: string): string {
   return text
     .split("\n")
@@ -33,7 +32,6 @@ export function outputToHtml(text: string): string {
     .join("\n");
 }
 
-/** Drops the ** markers. What lands on the clipboard as text/plain. */
 export function outputToPlainText(text: string): string {
   return text
     .split("\n")
@@ -46,7 +44,6 @@ export function outputToPlainText(text: string): string {
     .trim();
 }
 
-/** A one-line preview for History, e.g. "Yesterday: Shipped CSV export, paired with Ravi…". */
 export function outputPreview(text: string, max = 110): string {
   const parts: string[] = [];
   let current: { heading?: string; items: string[] } = { items: [] };
@@ -78,7 +75,6 @@ export function countWords(text: string): number {
     .filter((w) => w && !/^[–-]$/.test(w)).length;
 }
 
-/** Section headings in order, e.g. ["Yesterday", "Today", "Blockers"]. */
 export function sectionHeadings(text: string): string[] {
   return text
     .split("\n")

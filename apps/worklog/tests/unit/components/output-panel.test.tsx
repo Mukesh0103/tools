@@ -25,7 +25,6 @@ describe("OutputPanel", () => {
     expect(box).toHaveAttribute("contenteditable", "true");
     expect(ref.current?.getText()).toBe(TEXT);
 
-    // Simulate an edit, then a parent re-render with the same generation.
     act(() => {
       box.innerHTML = "<strong>Yesterday</strong>\n– Shipped CSV export for invoices";
       box.dispatchEvent(new Event("input", { bubbles: true }));
@@ -34,7 +33,6 @@ describe("OutputPanel", () => {
     expect(ref.current?.isEdited()).toBe(true);
     expect(ref.current?.getText()).toBe("**Yesterday**\n– Shipped CSV export for invoices");
 
-    // A new generation replaces the edits.
     rerender(
       <OutputPanel
         ref={ref}

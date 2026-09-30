@@ -77,7 +77,6 @@ export function TodayView({
         </div>
       </header>
 
-      {/* One input: inline above the list on desktop, docked above the tab bar on mobile. */}
       <div className="fixed inset-x-0 bottom-[calc(64px+max(env(safe-area-inset-bottom),8px))] z-20 flex flex-col gap-2 border-t border-border bg-background px-3 py-2.5 md:static md:gap-2.5 md:border-0 md:bg-transparent md:p-0">
         {quickTags.length > 0 ? <QuickChips tags={quickTags} /> : null}
         <EntryInput
@@ -94,9 +93,6 @@ export function TodayView({
           </span>
           <span>
             <span className="font-mono text-blocker-soft-foreground">!blocker</span> flags a blocker
-          </span>
-          <span className="ml-auto">
-            <Kbd>G</Kbd> <Kbd>S</Kbd> standup from today
           </span>
         </div>
       </div>
@@ -137,7 +133,6 @@ export function TodayView({
   );
 }
 
-/** Tapping a chip appends it to the input. Tag and blocker syntax is quick to type on a phone this way. */
 function QuickChips({ tags }: { tags: string[] }) {
   function insert(token: string) {
     const input = document.getElementById("entry-input") as HTMLInputElement | null;

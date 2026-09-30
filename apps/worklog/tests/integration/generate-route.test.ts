@@ -11,7 +11,6 @@ const { POST } = await import("@/app/api/generate/route");
 
 const ANTHROPIC = "https://api.anthropic.com/v1/messages";
 
-/** A real-shaped Anthropic Messages SSE stream, so the AI SDK provider parses it end to end. */
 function anthropicStream(chunks: string[]) {
   const events: [string, unknown][] = [
     [

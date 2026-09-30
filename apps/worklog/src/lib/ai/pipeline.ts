@@ -25,7 +25,6 @@ export function toPromptEntry(entry: Entry, tz: string): PromptEntry {
 export type GenerationJob = {
   promptVersion: string;
   model: string;
-  /** Text deltas. Throws if the provider fails. */
   stream: (signal?: AbortSignal) => AsyncGenerator<string>;
 };
 
@@ -58,10 +57,6 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-/**
- * Plans one generation: fetch (already done by the caller), build prompt, and
- * return a stream. Kept free of HTTP and DB concerns so it can be tested directly.
- */
 export function createGenerationJob(input: JobInput): GenerationJob {
   const promptInput: PromptInput = {
     entries: input.entries,

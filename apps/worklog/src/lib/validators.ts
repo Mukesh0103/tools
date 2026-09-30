@@ -1,9 +1,7 @@
-/** Zod schemas shared by client forms, server actions and route handlers. */
 import { z } from "zod";
 import { daysBetween, isISODate, isValidTimeZone } from "./dates";
 
 export const MAX_ENTRY_LENGTH = 500;
-/** Longest range any generator accepts, a little over a year. */
 export const MAX_RANGE_DAYS = 370;
 
 export const isoDate = z.string().refine(isISODate, "Expected a date like 2026-09-29");
@@ -51,7 +49,6 @@ export const generateRequestSchema = z.object({
   range: dateRangeSchema,
   tone: toneSchema,
   format: standupFormatSchema.optional(),
-  /** "plain" skips the model and lists entries as written. */
   mode: z.enum(["ai", "plain"]).default("ai"),
 });
 

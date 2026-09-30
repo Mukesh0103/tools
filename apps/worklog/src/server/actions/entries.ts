@@ -82,7 +82,6 @@ export async function deleteEntry(input: unknown): Promise<ActionResult<EntryVie
   return { ok: true, data: toEntryView(row, await userZone(userId)) };
 }
 
-/** Undo for a delete: puts the row back with its original id and timestamp. */
 export async function restoreEntry(input: unknown): Promise<ActionResult<EntryView>> {
   const userId = await requireUserId();
   const parsed = restoreEntrySchema.safeParse(input);

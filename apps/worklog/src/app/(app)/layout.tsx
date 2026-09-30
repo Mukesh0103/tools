@@ -7,7 +7,6 @@ import { auth } from "@/lib/auth";
 import { resolveTimeZone } from "@/lib/dates";
 import { getUserWithSettings } from "@/lib/db/queries/users";
 
-/** The sidebar, bottom tabs and auth guard for every signed-in page. */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");

@@ -1,10 +1,5 @@
 import { escapeHtml, outputToHtml, outputToPlainText } from "@/lib/ai/output";
 
-/**
- * Reads the editable panel back into the output text shape: <strong> becomes a
- * **Heading** line, and <br> or a block element becomes a newline. Handles
- * whatever the browser inserted while the user edited.
- */
 export function domToOutput(root: HTMLElement): string {
   let out = "";
   const walk = (node: Node, isFirstBlock: boolean) => {
@@ -35,7 +30,6 @@ export function domToOutput(root: HTMLElement): string {
     .trim();
 }
 
-/** Rich (for Slack, Docs, email) and plain versions of the output for the clipboard. */
 export function clipboardPayload(text: string): { html: string; plain: string } {
   const plain = outputToPlainText(text);
   const html = outputToHtml(text).split("\n").join("<br>");

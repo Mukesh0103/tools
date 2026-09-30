@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "@/lib/db/client";
 import { entries, users, type NewEntry } from "@/lib/db/schema";
 
-/** A fresh user per test keeps tests independent without truncating tables. */
 export async function createUser(opts: { timezone?: string | null; name?: string } = {}) {
   const [user] = await getDb()
     .insert(users)

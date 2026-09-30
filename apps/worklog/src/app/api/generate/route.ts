@@ -26,10 +26,6 @@ function fail(status: number, code: GenerateErrorCode, message: string, headers?
   return Response.json({ code, message }, { status, headers });
 }
 
-/**
- * POST /api/generate → streams plain text.
- * Response headers carry the saved generation id, the entry count, the prompt version and the model.
- */
 export async function POST(request: Request) {
   const userId = await currentUserId();
   if (!userId) return fail(401, "UNAUTHORIZED", "Sign in to generate.");
@@ -108,7 +104,6 @@ export async function POST(request: Request) {
             return;
           }
         }
-        // Finished: save the output unless the client walked away.
         if (!request.signal.aborted && output.trim()) {
           await insertGeneration({
             id,

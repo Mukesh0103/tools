@@ -1,10 +1,9 @@
 import { formatDayMonth, formatShortDate, type DateRange, type ISODate } from "@/lib/dates";
 import type { StandupFormat, Tone } from "@/lib/db/schema";
 
-/** An entry as a prompt sees it. Built from a DB row plus the user's zone. */
 export type PromptEntry = {
   date: ISODate;
-  time: string; // "HH:mm"
+  time: string;
   text: string;
   tags: string[];
   isBlocker: boolean;
@@ -13,7 +12,6 @@ export type PromptEntry = {
 export type PromptInput = {
   entries: PromptEntry[];
   range: DateRange;
-  /** The user's current calendar day. */
   today: ISODate;
   tone: Tone;
   format: StandupFormat;

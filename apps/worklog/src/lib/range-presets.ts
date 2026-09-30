@@ -12,7 +12,6 @@ import type { GenerationType } from "./db/schema";
 
 export type RangePreset = { id: string; label: string; range: DateRange };
 
-/** The default range per generator, in the user's zone. */
 export function defaultRanges(tz: string, now = new Date()): Record<GenerationType, DateRange> {
   return {
     standup: standupRange(tz, now),
@@ -23,7 +22,7 @@ export function defaultRanges(tz: string, now = new Date()): Record<GenerationTy
 
 export function rangePresets(tz: string, now = new Date()): Record<GenerationType, RangePreset[]> {
   const today = todayInZone(tz, now);
-  const mondayOffset = (weekday(today) + 6) % 7; // days since Monday
+  const mondayOffset = (weekday(today) + 6) % 7;
   const thisMonday = addDays(today, -mondayOffset);
   return {
     standup: [

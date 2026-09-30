@@ -32,12 +32,10 @@ export function resolveTimeZone(tz: string | null | undefined): string {
   return tz && isValidTimeZone(tz) ? tz : "UTC";
 }
 
-/** The user's current calendar day. */
 export function todayInZone(tz: string, now: Date = new Date()): ISODate {
   return formatInTimeZone(now, tz, "yyyy-MM-dd");
 }
 
-/** Local wall-clock "HH:mm" for an instant. */
 export function timeInZone(instant: Date, tz: string): string {
   return formatInTimeZone(instant, tz, "HH:mm");
 }
@@ -64,27 +62,22 @@ export function daysBetween(start: ISODate, end: ISODate): number {
   return Math.round((toUtcDate(end).getTime() - toUtcDate(start).getTime()) / 86_400_000);
 }
 
-/** 0 = Sunday … 6 = Saturday */
 export function weekday(date: ISODate): number {
   return toUtcDate(date).getUTCDay();
 }
 
-/** The previous weekday. Monday's standup reports on Friday. */
 export function previousWorkday(date: ISODate): ISODate {
   let d = addDays(date, -1);
   while (weekday(d) === 0 || weekday(d) === 6) d = addDays(d, -1);
   return d;
 }
 
-/** UTC instants bounding a local calendar day: [start, end). DST-safe. */
 export function dayBoundsUtc(date: ISODate, tz: string): { start: Date; end: Date } {
   return {
     start: fromZonedTime(`${date}T00:00:00`, tz),
     end: fromZonedTime(`${addDays(date, 1)}T00:00:00`, tz),
   };
 }
-
-/* ─── Default ranges for each generator ──────────────────────────────────── */
 
 export function standupRange(tz: string, now: Date = new Date()): DateRange {
   const today = todayInZone(tz, now);
@@ -114,7 +107,6 @@ export function yearRange(tz: string, now: Date = new Date()): DateRange {
   return { start: `${year}-01-01`, end: `${year}-12-31` };
 }
 
-/** Calendar months overlapping a range, clipped to it. Drives the per-month pass of appraisal notes. */
 export function monthsInRange(range: DateRange): (DateRange & { label: string })[] {
   const months: (DateRange & { label: string })[] = [];
   let cursor = `${range.start.slice(0, 7)}-01`;
@@ -130,28 +122,22 @@ export function monthsInRange(range: DateRange): (DateRange & { label: string })
   return months;
 }
 
-/* ─── Labels ──────────────────────────────────────────────────────────────── */
-
 function fmt(date: ISODate, pattern: string): string {
   return formatInTimeZone(toUtcDate(date), "UTC", pattern);
 }
 
-/** "Tuesday, 29 September" */
 export function formatLongDate(date: ISODate): string {
   return fmt(date, "EEEE, d MMMM");
 }
 
-/** "Tue 29 Sep" */
 export function formatShortDate(date: ISODate): string {
   return fmt(date, "EEE d MMM");
 }
 
-/** "29 Sep" */
 export function formatDayMonth(date: ISODate): string {
   return fmt(date, "d MMM");
 }
 
-/** "Today · Tue 29 Sep", "Yesterday · Mon 28 Sep", or "Fri 25 Sep". */
 export function formatDayHeading(date: ISODate, today: ISODate): string {
   if (date === today) return `Today · ${formatShortDate(date)}`;
   if (date === addDays(today, -1)) return `Yesterday · ${formatShortDate(date)}`;
@@ -160,17 +146,12 @@ export function formatDayHeading(date: ISODate, today: ISODate): string {
     : fmt(date, "EEE d MMM yyyy");
 }
 
-/** Page title for a day: "Today", "Yesterday", or "Friday". */
 export function formatDayTitle(date: ISODate, today: ISODate): string {
   if (date === today) return "Today";
   if (date === addDays(today, -1)) return "Yesterday";
   return fmt(date, "EEEE");
 }
 
-/**
- * "Mon 28 – Tue 29 Sep", "Mon 31 Aug – Tue 1 Sep", or "Jul – Sep 2026 (Q3)"
- * when the range is exactly one calendar quarter.
- */
 export function formatRangeLabel({ start, end }: DateRange): string {
   const [sy, sm, sd] = start.split("-").map(Number) as [number, number, number];
   const endIsMonthEnd = addDays(end, 1).endsWith("-01");
@@ -190,9 +171,8 @@ export function formatRangeLabel({ start, end }: DateRange): string {
   return `${fmt(start, "d MMM yyyy")} – ${fmt(end, "d MMM yyyy")}`;
 }
 
-/** "Asia/Kolkata (UTC+5:30)" */
 export function formatTimeZoneLabel(tz: string, now: Date = new Date()): string {
-  const offset = formatInTimeZone(now, tz, "xxx"); // "+05:30"
+  const offset = formatInTimeZone(now, tz, "xxx");
   const sign = offset.startsWith("-") ? "−" : "+";
   const [h, m] = offset.slice(1).split(":") as [string, string];
   const pretty = offset === "+00:00" ? "UTC" : `UTC${sign}${Number(h)}${m === "00" ? "" : `:${m}`}`;

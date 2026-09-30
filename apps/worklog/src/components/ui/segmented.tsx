@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 export type SegmentedOption<T extends string> = { value: T; label: React.ReactNode };
 
-/** A row of toggle buttons where one is pressed. The design's "seg" control. */
 export function Segmented<T extends string>({
   options,
   value,

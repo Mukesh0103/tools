@@ -15,17 +15,11 @@ type Suggestion = { value: string; label: string; create?: boolean };
 export type EntryInputProps = {
   onSubmit: (raw: string) => Promise<SubmitResult>;
   knownTags?: string[];
-  /** Focus on mount when there's a hardware keyboard. */
   autoFocus?: boolean;
   placeholder?: string;
   className?: string;
 };
 
-/**
- * The one-line entry box. Enter saves. The box clears straight away and stays
- * focused. If the save fails, the text comes back and a Retry button appears.
- * Typing "#" suggests known tags: Tab accepts, the arrow keys move, Escape closes.
- */
 export function EntryInput({
   onSubmit,
   knownTags = [],

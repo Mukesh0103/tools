@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { domToOutput } from "./output-format";
 
 export type OutputPanelHandle = {
-  /** The current text, including the user's edits. */
   getText: () => string;
   isEdited: () => boolean;
   focus: () => void;

@@ -13,7 +13,6 @@ function csvCell(value: string): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
-/** GET /api/export?format=md|csv downloads every entry the user has logged. */
 export async function GET(request: Request) {
   const userId = await currentUserId();
   if (!userId) return Response.json({ message: "Unauthorized" }, { status: 401 });

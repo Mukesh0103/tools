@@ -53,7 +53,6 @@ ${SECTIONS}
 ${toneRule(tone, APPRAISAL_WORD_LIMIT.concise, APPRAISAL_WORD_LIMIT.detailed)}`;
 }
 
-/** One pass, straight from the entries. Used for shorter periods. */
 export function buildAppraisalPrompt(input: PromptInput): BuiltPrompt {
   const lines = input.entries.map((e) => formatEntryLine(e));
   return {
@@ -63,7 +62,6 @@ export function buildAppraisalPrompt(input: PromptInput): BuiltPrompt {
   };
 }
 
-/** Pass 1 for long periods: one month of entries becomes dated notes. */
 export function buildAppraisalMonthPrompt(month: {
   label: string;
   entries: PromptEntry[];
@@ -83,7 +81,6 @@ Format: up to 12 bullets, most significant first. Each bullet starts with "– "
   };
 }
 
-/** Pass 2 for long periods: the monthly notes become the final appraisal. */
 export function buildAppraisalCombinePrompt(
   input: Omit<PromptInput, "entries">,
   notes: { label: string; text: string }[],

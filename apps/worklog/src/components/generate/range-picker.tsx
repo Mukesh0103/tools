@@ -11,7 +11,6 @@ import { dateRangeSchema } from "@/lib/validators";
 
 export type { RangePreset } from "@/lib/range-presets";
 
-/** "Mon 28 – Tue 29" when both ends share a month, for narrow screens. */
 function compactLabel(range: DateRange): string {
   const full = formatRangeLabel(range);
   return range.start.slice(0, 7) === range.end.slice(0, 7)
