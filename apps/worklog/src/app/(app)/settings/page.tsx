@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { requireUserId } from "@/lib/auth";
 import { formatTimeZoneLabel, resolveTimeZone } from "@/lib/dates";
+import { listIntegrationStatuses } from "@/lib/db/queries/integrations";
 import { getUserWithSettings, listLinkedProviders } from "@/lib/db/queries/users";
+import { aiSummariesAvailable } from "@/lib/integrations/summarize";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -18,9 +20,10 @@ function timeZoneOptions(current: string) {
 
 export default async function SettingsPage() {
   const userId = await requireUserId();
-  const [user, providers] = await Promise.all([
+  const [user, providers, integrations] = await Promise.all([
     getUserWithSettings(userId),
     listLinkedProviders(userId),
+    listIntegrationStatuses(userId),
   ]);
   if (!user) return null;
   const tz = resolveTimeZone(user.timezone);
@@ -36,7 +39,10 @@ export default async function SettingsPage() {
         reminderEnabled: user.settings.reminderEnabled,
         reminderTime: user.settings.reminderTime.slice(0, 5),
         standupFormat: user.settings.standupFormat,
+        aiSummaries: user.settings.aiSummaries,
       }}
+      integrations={integrations}
+      aiAvailable={aiSummariesAvailable()}
     />
   );
 }

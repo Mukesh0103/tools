@@ -1,5 +1,5 @@
 import { timeInZone } from "./dates";
-import type { Entry } from "./db/schema";
+import type { Entry, EntrySource } from "./db/schema";
 
 export type EntryView = {
   id: string;
@@ -8,6 +8,10 @@ export type EntryView = {
   isBlocker: boolean;
   createdAt: string;
   time: string;
+  /** "manual" for typed entries; "github" or "jira" for imported ones, which also carry a link. */
+  source: EntrySource;
+  externalId: string | null;
+  url: string | null;
 };
 
 export function toEntryView(entry: Entry, tz: string): EntryView {
@@ -18,6 +22,9 @@ export function toEntryView(entry: Entry, tz: string): EntryView {
     isBlocker: entry.isBlocker,
     createdAt: entry.createdAt.toISOString(),
     time: timeInZone(entry.createdAt, tz),
+    source: entry.source,
+    externalId: entry.externalId,
+    url: entry.url,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pencil, Trash } from "lucide-react";
+import { Check, GitPullRequest, Pencil, SquareKanban, Trash } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BlockerBadge } from "@/components/ui/chips";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,10 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
         {entry.time}
       </span>
       <div className="flex min-w-0 grow flex-wrap items-center gap-x-2 gap-y-1.5 leading-[22px]">
-        <span className="text-[15px] break-words">{entry.text}</span>
+        <span className="text-[15px] break-words">
+          {entry.text}
+          <SourceLink entry={entry} />
+        </span>
         {entry.isBlocker ? <BlockerBadge /> : null}
         {showSaved ? (
           <span className="inline-flex items-center gap-1 text-xs text-primary" role="status">
@@ -112,5 +115,29 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
         </Button>
       </div>
     </div>
+  );
+}
+
+const SOURCES = {
+  github: { icon: GitPullRequest, label: "Open on GitHub" },
+  jira: { icon: SquareKanban, label: "Open in Jira" },
+} as const;
+
+/** Imported entries link back to the pull request or issue they came from. */
+function SourceLink({ entry }: { entry: EntryView }) {
+  if (entry.source === "manual" || !entry.url?.startsWith("https://")) return null;
+  const { icon: Icon, label } = SOURCES[entry.source];
+  return (
+    <a
+      href={entry.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={label}
+      title={label}
+      // Inline at the end of the text, so it wraps with the last word instead of onto its own line.
+      className="-my-1 ml-1 inline-flex rounded-md p-1 align-[-3px] text-muted-foreground hover:text-primary focus-visible:text-primary"
+    >
+      <Icon className="size-3.5" strokeWidth={1.9} aria-hidden />
+    </a>
   );
 }

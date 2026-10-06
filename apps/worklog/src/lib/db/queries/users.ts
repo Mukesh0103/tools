@@ -10,6 +10,7 @@ const defaults = (userId: string): Settings => ({
   reminderEnabled: false,
   lastRemindedOn: null,
   standupFormat: "ytb",
+  aiSummaries: true,
 });
 
 export async function getUserWithSettings(userId: string): Promise<UserWithSettings | undefined> {
@@ -38,7 +39,7 @@ export async function upsertSettings(
   return row!;
 }
 
-/** Cascades to entries, generations, settings and auth rows. */
+/** Cascades to entries, generations, settings, integrations and auth rows. */
 export async function deleteUser(userId: string): Promise<void> {
   await getDb().delete(users).where(eq(users.id, userId));
 }

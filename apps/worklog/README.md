@@ -6,6 +6,7 @@ Log one line per task. Worklog turns those lines into a **standup**, a **weekly 
 - **Keyboard-first.** `N` focuses the input, `/` searches the timeline, `G` then `W`/`A` generates a weekly summary or appraisal notes, and `⌘/Ctrl C` copies the output.
 - **Calm, dense and mobile-ready.** Every screen works at 375 px, in light and dark.
 - **Output is editable.** Generated text lands in an editable box. Your edits are what gets copied and saved.
+- **Or don't write at all.** Connect GitHub and Jira, and the pull requests you open, merge and review, and the issues you move, show up as entries on their own. With an Anthropic key, Claude writes each pull request's line from its description, commits and changed files.
 
 ## Quick start
 
@@ -58,12 +59,21 @@ See [`.env.example`](.env.example) for every variable. Each integration switches
 | `AUTH_GITHUB_ID` / `_SECRET`           | "Continue with GitHub"                  | Button hidden                                                                  |
 | `AUTH_GOOGLE_ID` / `_SECRET`           | "Continue with Google"                  | Button hidden                                                                  |
 | `RESEND_API_KEY` + `EMAIL_FROM`        | Magic links and reminder emails         | Dev: printed to the console. Prod: magic link hidden and reminders logged only |
-| `CRON_SECRET`                          | `/api/cron/reminders`                   | Endpoint returns 401                                                           |
+| `CRON_SECRET`                          | `/api/cron/sync`, `/api/cron/reminders` | Endpoints return 401                                                           |
+| `ANTHROPIC_API_KEY`                    | AI summaries of imported pull requests  | The pull request title is used (prefix like `feat:` removed)                   |
+| `ANTHROPIC_MODEL`                      | Picking the summary model               | `claude-opus-5-5`                                                              |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring                        | Off                                                                            |
 | `NEXT_PUBLIC_POSTHOG_KEY`              | Product analytics                       | Off                                                                            |
 | `AUTH_TEST_LOGIN_SECRET`               | Password-less test login for Playwright | Off. **Never set this in production.**                                         |
 
 OAuth callback URLs are `{APP_URL}/api/auth/callback/github` and `{APP_URL}/api/auth/callback/google`.
+
+GitHub and Jira need no server keys. Each user connects their own account in **Settings → Integrations**, with a token:
+
+- **GitHub:** a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with read-only **Pull requests** access to the repos you work in. A classic token with `repo` also works. Signing in with GitHub isn't enough, because that token can't see private repos.
+- **Jira Cloud:** your site (`acme.atlassian.net`), your Atlassian email and an [API token](https://id.atlassian.com/manage-profile/security/api-tokens). Jira Server and Data Center aren't supported.
+
+Tokens are stored encrypted (AES-256-GCM, with a key derived from `AUTH_SECRET`). Rotating `AUTH_SECRET` makes them unreadable, and Settings then asks each user to reconnect.
 
 ## How it works
 
@@ -79,22 +89,41 @@ src/
 │   │   └── settings/            # zone, reminder, formats, theme, export, delete
 │   └── api/
 │       ├── generate/            # builds and saves an output
+│       ├── sync/                # imports the signed-in user's GitHub + Jira activity
 │       ├── auth/[...nextauth]/  # Auth.js
+│       ├── cron/sync/           # hourly import for everyone connected
 │       ├── cron/reminders/      # hourly reminder sweep
 │       └── export/              # Markdown / CSV download
 ├── components/                  # ui/ primitives, entries/, generate/, settings/, app/ shell
 ├── lib/
 │   ├── db/                      # Drizzle schema, lazy client, migrator, queries/
 │   ├── generate/                # output templates (plain.ts) and the output shape
+│   ├── integrations/            # GitHub + Jira clients, pure mappers, AI summaries, sync, token crypto
 │   ├── auth.ts                  # Auth.js config, only providers whose keys are set
 │   ├── dates.ts                 # time-zone-aware ranges and labels
 │   ├── parse-entry.ts           # !blocker flag
 │   └── validators.ts            # Zod schemas shared by client and server
-├── server/actions/              # entries, settings, auth
+├── server/actions/              # entries, settings, integrations, auth
 └── styles/globals.css           # design tokens (light + dark) as CSS variables
 ```
 
 **Data.** Every query takes `userId` and filters on it. `entries` has an index on `(user_id, entry_date)`. `entry_date` is stored separately from `created_at`, so yesterday's work can be logged this morning (use ← on Today). Calendar days travel as `YYYY-MM-DD` strings. They only become instants through the user's zone (`lib/dates.ts`), which keeps DST shifts from moving a day.
+
+**Moving between days.** The Today header reads `[Today] [‹][›]`. The heading is the only place that names the day you're on. The controls only move, and you can't go past today. The server works out "today" when it renders, so `useDayRollover` re-renders the page at local midnight, and when a tab left open overnight comes back into view. Entries typed on plain Today don't send a date: the server files them under the current day. If the device's zone differs from the saved one, Today offers to switch.
+
+**Integrations.** A sync fetches activity for a range of days, maps it to entries with pure functions (`lib/integrations/github.ts`, `jira.ts`), and inserts what's new:
+
+| Source | What becomes an entry                                    | Example                                               |
+| ------ | -------------------------------------------------------- | ----------------------------------------------------- |
+| GitHub | A pull request you opened or merged                      | `Merged web#128: Add Okta SSO to the admin dashboard` |
+| GitHub | Your reviews on someone else's PR, one per PR per day    | `Approved api#45: Fix double charge on retry`         |
+| Jira   | The last status you moved an issue to, per issue per day | `Moved PAY-7 to In Review: Retry failed payouts`      |
+
+Every imported entry has a stable `external_id`, with a unique index on `(user_id, external_id)`, so re-syncing never duplicates. Imported entries are ordinary entries: you can edit them, and they feed standups, summaries and exports. Their time is when the work happened, and they link back to the PR or issue. Deleting one records a dismissal so it never comes back, and **Undo** lifts it. Edits survive later syncs.
+
+Like [release-please](https://github.com/googleapis/release-please), the line for a PR is built from what's already in GitHub. Without AI, the PR title is used with its conventional-commit prefix removed, and `fix:` and `revert:` keep their verb. With `ANTHROPIC_API_KEY` set, Settings shows a **Summarise pull requests with AI** toggle (hidden otherwise), and while it's on, Claude reads the description, commit messages and changed files, and writes one commit-subject-style line. That helps most when the title is vague ("Updates", "WIP"). Summaries run at low effort, at most 20 per sync, and any failure falls back to the title.
+
+Syncs run when Today opens (the standup range, at most every 10 minutes), from the sync button (the day on screen), as a 7-day backfill right after connecting, and hourly through `/api/cron/sync`.
 
 **Generation.** `POST /api/generate` checks the session, fetches the range in the user's zone, builds the output with `lib/generate/plain.ts`, and saves it to `generations`. No AI is involved:
 
@@ -112,9 +141,12 @@ Every generator writes one text shape: `**Heading**` lines and `– ` bullets. T
 2. **Vercel.** Import the repo and set **Root Directory** to `apps/worklog`. `vercel.json` runs `pnpm db:migrate && pnpm build`, so every deploy migrates its own database.
 3. **Env vars.** Add the variables from the table above. At minimum, `DATABASE_URL`, `AUTH_SECRET`, `APP_URL` and at least one sign-in method.
 4. **Resend.** Verify your sending domain and set `EMAIL_FROM` to an address on it.
-5. **Reminders.** The hourly trigger lives in `.github/workflows/worklog-reminders.yml`, because Vercel Hobby only allows daily crons. Set the repo variable `WORKLOG_APP_URL` and the secret `WORKLOG_CRON_SECRET` (the same value as `CRON_SECRET`). On Vercel Pro you can use Vercel Cron instead by adding this to `vercel.json`:
+5. **Hourly jobs.** `.github/workflows/worklog-reminders.yml` calls `/api/cron/sync` and then `/api/cron/reminders` every hour, because Vercel Hobby only allows daily crons. Sync runs first, so imported work counts as logged and doesn't trigger a reminder. Set the repo variable `WORKLOG_APP_URL` and the secret `WORKLOG_CRON_SECRET` (the same value as `CRON_SECRET`). On Vercel Pro you can use Vercel Cron instead by adding this to `vercel.json`:
    ```json
-   "crons": [{ "path": "/api/cron/reminders", "schedule": "0 * * * *" }]
+   "crons": [
+     { "path": "/api/cron/sync", "schedule": "0 * * * *" },
+     { "path": "/api/cron/reminders", "schedule": "5 * * * *" }
+   ]
    ```
    Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically.
 
@@ -141,4 +173,6 @@ Every generator writes one text shape: `**Heading**` lines and `– ` bullets. T
 - Markdown and CSV export
 - Account deletion
 
-**Later:** projects, Slack delivery, team and manager views, and swipe-to-delete on mobile (today it's tap a row, then the delete button).
+**Since the MVP:** GitHub and Jira import, with optional AI summaries of pull requests.
+
+**Later:** projects, Slack delivery, team and manager views, grouping imported work by type in weekly summaries (release-please's Features / Bug Fixes sections), and swipe-to-delete on mobile (today it's tap a row, then the delete button).

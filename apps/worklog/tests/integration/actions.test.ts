@@ -59,6 +59,11 @@ describe("entry actions", () => {
     });
   });
 
+  it("files an entry without a date under today in the user's zone", async () => {
+    const res = await createEntry({ raw: "Logged from a tab left open overnight" });
+    expect(res.ok && res.data.entryDate).toBe(todayInZone("Asia/Kolkata"));
+  });
+
   it("rejects empty, blocker-only and over-long lines", async () => {
     const date = todayInZone("Asia/Kolkata");
     expect((await createEntry({ raw: "   ", entryDate: date })).ok).toBe(false);
@@ -126,6 +131,7 @@ describe("settings actions", () => {
       reminderEnabled: true,
       reminderTime: "17:45",
       standupFormat: "paragraph",
+      aiSummaries: false,
     });
     expect(res.ok).toBe(true);
     const user = await getUserWithSettings(currentUser);
@@ -134,7 +140,17 @@ describe("settings actions", () => {
       reminderEnabled: true,
       reminderTime: "17:45:00",
       standupFormat: "paragraph",
+      aiSummaries: false,
     });
+
+    // A client that predates the AI setting leaves it as it was.
+    await saveSettings({
+      timezone: "Europe/London",
+      reminderEnabled: false,
+      reminderTime: "17:45",
+      standupFormat: "ytb",
+    });
+    expect((await getUserWithSettings(currentUser))?.settings.aiSummaries).toBe(false);
   });
 
   it("adopts the browser zone only when none is set", async () => {

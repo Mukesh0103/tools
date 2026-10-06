@@ -41,7 +41,11 @@ export function useEntryMutations(entries: EntryView[]) {
   const [freshId, setFreshId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  function add(raw: string, entryDate: string): Promise<SubmitResult> {
+  /**
+   * `pinDate: false` lets the server choose the day. Today uses it, so a tab left
+   * open past midnight files new work under the new day, not the one on screen.
+   */
+  function add(raw: string, entryDate: string, { pinDate = true } = {}): Promise<SubmitResult> {
     const parsed = parseEntry(raw);
     const id = crypto.randomUUID();
     const now = new Date();
@@ -51,12 +55,15 @@ export function useEntryMutations(entries: EntryView[]) {
       ...parsed,
       createdAt: now.toISOString(),
       time: localTime(now),
+      source: "manual",
+      externalId: null,
+      url: null,
     };
     return new Promise((resolve) => {
       startTransition(async () => {
         apply({ type: "add", entry });
         try {
-          const res = await createEntry({ raw, entryDate, id });
+          const res = await createEntry({ raw, id, ...(pinDate ? { entryDate } : {}) });
           if (res.ok) {
             setFreshId(id);
             track("entry_created", { blocker: parsed.isBlocker });
@@ -100,6 +107,7 @@ export function useEntryMutations(entries: EntryView[]) {
           return;
         }
         toast("Entry deleted", {
+          description: res.data.externalId ? "It won’t be imported again." : undefined,
           action: {
             label: "Undo",
             onClick: () => {
