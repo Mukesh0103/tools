@@ -5,6 +5,10 @@ async function logEntry(page: Page, text: string) {
   await input.fill(text);
   await input.press("Enter");
   await expect(input).toHaveValue("");
+  // The row shows up optimistically. Wait for "Saved", which only appears once the
+  // server confirms, so a reload right after can't beat the insert.
+  const row = page.locator("[data-entry-id]").filter({ hasText: text.replace(/\s*!blocker$/, "") });
+  await expect(row.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });
