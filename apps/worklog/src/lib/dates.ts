@@ -79,6 +79,22 @@ export function dayBoundsUtc(date: ISODate, tz: string): { start: Date; end: Dat
   };
 }
 
+/** The instants a range of calendar days covers in `tz`: [start of first day, start of the day after the last). */
+export function rangeBoundsUtc(range: DateRange, tz: string): { start: Date; end: Date } {
+  return { start: dayBoundsUtc(range.start, tz).start, end: dayBoundsUtc(range.end, tz).end };
+}
+
+/** Milliseconds until the next local midnight in `tz`. */
+export function msUntilNextDay(tz: string, now: Date = new Date()): number {
+  const next = dayBoundsUtc(todayInZone(tz, now), tz).end;
+  return Math.max(0, next.getTime() - now.getTime());
+}
+
+/** True when both zones are at the same UTC offset right now, so they agree on what "today" is. */
+export function sameUtcOffset(a: string, b: string, now: Date = new Date()): boolean {
+  return formatInTimeZone(now, a, "xxx") === formatInTimeZone(now, b, "xxx");
+}
+
 export function standupRange(tz: string, now: Date = new Date()): DateRange {
   const today = todayInZone(tz, now);
   return { start: previousWorkday(today), end: today };

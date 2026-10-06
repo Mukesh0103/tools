@@ -18,9 +18,13 @@ export async function saveSettings(input: unknown): Promise<ActionResult<null>> 
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
-  const { timezone, reminderTime, ...rest } = parsed.data;
+  const { timezone, reminderTime, aiSummaries, ...rest } = parsed.data;
   await updateUserTimezone(userId, timezone);
-  await upsertSettings(userId, { ...rest, reminderTime: `${reminderTime}:00` });
+  await upsertSettings(userId, {
+    ...rest,
+    reminderTime: `${reminderTime}:00`,
+    ...(aiSummaries === undefined ? {} : { aiSummaries }),
+  });
   revalidatePath("/", "layout");
   return { ok: true, data: null };
 }
@@ -38,6 +42,16 @@ export async function adoptBrowserTimezone(timezone: unknown): Promise<ActionRes
     await updateUserTimezone(userId, parsed.data);
     revalidatePath("/", "layout");
   }
+  return { ok: true, data: null };
+}
+
+/** Switches the account to the device's zone, from the hint on Today. */
+export async function switchTimezone(timezone: unknown): Promise<ActionResult<null>> {
+  const userId = await requireUserId();
+  const parsed = timeZoneSchema.safeParse(timezone);
+  if (!parsed.success) return { ok: false, error: "Unknown time zone" };
+  await updateUserTimezone(userId, parsed.data);
+  revalidatePath("/", "layout");
   return { ok: true, data: null };
 }
 

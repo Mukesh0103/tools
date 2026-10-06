@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/lib/auth";
 import { compareDates, resolveTimeZone, todayInZone } from "@/lib/dates";
 import * as q from "@/lib/db/queries/entries";
+import { dismissExternalId, undismissExternalId } from "@/lib/db/queries/integrations";
 import { getUserWithSettings } from "@/lib/db/queries/users";
 import { toEntryView, type EntryView } from "@/lib/entry-view";
 import { parseEntry } from "@/lib/parse-entry";
@@ -33,7 +34,9 @@ export async function createEntry(input: unknown): Promise<ActionResult<EntryVie
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid entry" };
 
   const tz = await userZone(userId);
-  if (compareDates(parsed.data.entryDate, todayInZone(tz)) > 0) {
+  const today = todayInZone(tz);
+  const entryDate = parsed.data.entryDate ?? today;
+  if (compareDates(entryDate, today) > 0) {
     return { ok: false, error: "You can't log work for a future day." };
   }
   const entry = parseEntry(parsed.data.raw);
@@ -43,7 +46,7 @@ export async function createEntry(input: unknown): Promise<ActionResult<EntryVie
     const row = await q.insertEntry({
       id: parsed.data.id,
       userId,
-      entryDate: parsed.data.entryDate,
+      entryDate,
       text: entry.text,
       isBlocker: entry.isBlocker,
     });
@@ -77,6 +80,8 @@ export async function deleteEntry(input: unknown): Promise<ActionResult<EntryVie
 
   const row = await q.deleteEntry(userId, parsed.data.id);
   if (!row) return { ok: false, error: "That entry no longer exists." };
+  // A deleted import stays deleted: the next sync must not bring it back.
+  if (row.externalId) await dismissExternalId(userId, row.externalId);
   revalidateEntries();
   return { ok: true, data: toEntryView(row, await userZone(userId)) };
 }
@@ -86,6 +91,7 @@ export async function restoreEntry(input: unknown): Promise<ActionResult<EntryVi
   const parsed = restoreEntrySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Couldn't restore that entry." };
   try {
+    if (parsed.data.externalId) await undismissExternalId(userId, parsed.data.externalId);
     const row = await q.insertEntry({ ...parsed.data, userId });
     revalidateEntries();
     return { ok: true, data: toEntryView(row, await userZone(userId)) };
