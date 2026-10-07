@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { track } from "@/lib/analytics";
 import type { EntryView } from "@/lib/entry-view";
 import { parseEntry } from "@/lib/parse-entry";
+import { announceEntryLogged } from "@/lib/reminder";
 import { createEntry, deleteEntry, restoreEntry, updateEntry } from "@/server/actions/entries";
 
 type Action =
@@ -66,6 +67,7 @@ export function useEntryMutations(entries: EntryView[]) {
           const res = await createEntry({ raw, id, ...(pinDate ? { entryDate } : {}) });
           if (res.ok) {
             setFreshId(id);
+            announceEntryLogged(res.data.entryDate);
             track("entry_created", { blocker: parsed.isBlocker });
             resolve({ ok: true });
           } else {

@@ -167,7 +167,7 @@ export const settings = pgTable("settings", {
     .references(() => users.id, { onDelete: "cascade" }),
   reminderTime: time().notNull().default("18:00:00"),
   reminderEnabled: boolean().notNull().default(false),
-  /** Local calendar date of the last reminder sent, so the cron never double-sends. */
+  /** Local calendar date the in-app reminder was closed, so it stays closed for the rest of that day. */
   lastRemindedOn: date({ mode: "string" }),
   standupFormat: standupFormat().notNull().default("ytb"),
   /** Summarise imported pull requests with Claude. Only used when ANTHROPIC_API_KEY is set. */

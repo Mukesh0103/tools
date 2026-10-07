@@ -14,7 +14,8 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { createEntry, deleteEntry, restoreEntry, updateEntry } =
   await import("@/server/actions/entries");
-const { adoptBrowserTimezone, saveSettings } = await import("@/server/actions/settings");
+const { adoptBrowserTimezone, dismissReminder, saveSettings } =
+  await import("@/server/actions/settings");
 
 beforeEach(async () => {
   currentUser = (await createUser({ timezone: "Asia/Kolkata" })).id;
@@ -151,6 +152,31 @@ describe("settings actions", () => {
       standupFormat: "ytb",
     });
     expect((await getUserWithSettings(currentUser))?.settings.aiSummaries).toBe(false);
+  });
+
+  it("closes the reminder for the day, until its time changes or it's switched back on", async () => {
+    const prefs = {
+      timezone: "Asia/Kolkata",
+      reminderEnabled: true,
+      reminderTime: "18:00",
+      standupFormat: "ytb",
+    };
+    const closedOn = async () => (await getUserWithSettings(currentUser))?.settings.lastRemindedOn;
+    await saveSettings(prefs);
+    expect(await dismissReminder()).toEqual({ ok: true, data: null });
+    expect(await closedOn()).toBe(todayInZone("Asia/Kolkata"));
+
+    // Other preferences leave it closed.
+    await saveSettings({ ...prefs, standupFormat: "bullets" });
+    expect(await closedOn()).toBe(todayInZone("Asia/Kolkata"));
+
+    await saveSettings({ ...prefs, reminderTime: "18:30" });
+    expect(await closedOn()).toBeNull();
+
+    await dismissReminder();
+    await saveSettings({ ...prefs, reminderTime: "18:30", reminderEnabled: false });
+    await saveSettings({ ...prefs, reminderTime: "18:30" });
+    expect(await closedOn()).toBeNull();
   });
 
   it("adopts the browser zone only when none is set", async () => {
