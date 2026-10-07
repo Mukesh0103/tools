@@ -4,8 +4,7 @@
  * without a network.
  *
  * External ids are stable and say what happened, so re-syncing never duplicates:
- *   github:pr:acme/web#12:merged
- *   github:pr:acme/web#12:opened
+ *   github:pr:acme/web#12:merged      also :opened and :closed (closed without merging)
  *   github:review:acme/web#45:2026-10-05      one per pull request per day
  *   jira:acme.atlassian.net:PROJ-7:10001:2026-10-05   one per issue, status and day
  */
@@ -34,8 +33,14 @@ export type Activity = {
   /** The entry text, built without AI. */
   text: string;
   url: string;
-  /** The user's own pull requests: sync can replace the title part of `text` with an AI summary. */
-  summarize?: { prefix: string; details: PullRequestDetails };
+  /** The user's own pull requests: sync can put an AI summary between `prefix` and `suffix`. */
+  summarize?: {
+    prefix: string;
+    suffix: string;
+    /** The Jira key already in `prefix`, so it can be dropped if the summary repeats it. */
+    issueKey: string | null;
+    details: PullRequestDetails;
+  };
 };
 
 /** Raised for problems the user can act on. The message is shown in Settings as is. */
@@ -90,9 +95,4 @@ export function cleanTitle(title: string): string {
 
 export function clip(text: string, max = MAX_ENTRY_LENGTH): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
-}
-
-/** "acme/web" → "web". Short refs read better in a standup than full owner/repo names. */
-export function repoName(nameWithOwner: string): string {
-  return nameWithOwner.split("/").at(-1) ?? nameWithOwner;
 }

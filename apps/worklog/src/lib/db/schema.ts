@@ -130,6 +130,8 @@ export const integrations = pgTable(
     /** Jira only: site origin ("https://acme.atlassian.net") and the email the token belongs to. */
     siteUrl: text(),
     email: text(),
+    /** Jira only: where API calls go when it isn't the site. Atlassian's gateway, for tokens with scopes. */
+    apiUrl: text(),
     /** The API token, encrypted with lib/integrations/crypto.ts. Never sent to the client. */
     secret: text().notNull(),
     lastSyncedAt: timestamp({ withTimezone: true }),

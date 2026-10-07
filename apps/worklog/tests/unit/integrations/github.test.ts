@@ -12,8 +12,10 @@ function authored(over: Partial<AuthoredPullRequest> = {}): AuthoredPullRequest 
     title: "feat(auth): add Okta SSO",
     url: "https://github.com/acme/web/pull/12",
     body: "<!-- template -->\nAdds SSO.",
+    headRefName: "okta-sso",
     createdAt: "2026-10-05T09:00:00Z",
     mergedAt: null,
+    closedAt: null,
     additions: 120,
     deletions: 8,
     repository: { nameWithOwner: "acme/web" },
@@ -33,6 +35,8 @@ function reviewed(over: Partial<ReviewedPullRequest> = {}): ReviewedPullRequest 
     number: 45,
     title: "fix: double charge on retry",
     url: "https://github.com/acme/api/pull/45",
+    body: "",
+    headRefName: "double-charge",
     author: { login: "ravi" },
     repository: { nameWithOwner: "acme/api" },
     reviews: { nodes: [] },
@@ -41,6 +45,7 @@ function reviewed(over: Partial<ReviewedPullRequest> = {}): ReviewedPullRequest 
 }
 
 const monday = { start: "2026-10-05", end: "2026-10-05" };
+const JIRA = new Set(["PAY", "WEB"]);
 
 function map(input: Partial<Parameters<typeof toGitHubActivities>[0]>) {
   return toGitHubActivities({
@@ -52,6 +57,9 @@ function map(input: Partial<Parameters<typeof toGitHubActivities>[0]>) {
     ...input,
   });
 }
+
+const texts = (input: Partial<Parameters<typeof toGitHubActivities>[0]>) =>
+  map(input).map((a) => a.text);
 
 describe("cleanTitle", () => {
   it("drops conventional-commit prefixes, release-please style", () => {
@@ -75,41 +83,60 @@ describe("cleanTitle", () => {
   });
 });
 
-describe("toGitHubActivities", () => {
-  it("logs a pull request opened and merged on the same day once, as merged", () => {
-    const activities = map({ authored: [authored({ mergedAt: "2026-10-05T15:00:00Z" })] });
+describe("toGitHubActivities: your pull requests", () => {
+  it("writes Status - Title #number, and logs a same-day open and merge once, as merged", () => {
+    const merged = "2026-10-05T15:00:00Z";
+    const activities = map({ authored: [authored({ mergedAt: merged, closedAt: merged })] });
     expect(activities).toHaveLength(1);
     expect(activities[0]).toMatchObject({
       source: "github",
       externalId: "github:pr:acme/web#12:merged",
       date: "2026-10-05",
-      text: "Merged web#12: Add Okta SSO",
+      text: "Merged - Add Okta SSO #12",
       url: "https://github.com/acme/web/pull/12",
     });
-    expect(activities[0]!.summarize?.prefix).toBe("Merged web#12: ");
-    expect(activities[0]!.summarize?.details).toMatchObject({
-      merged: true,
-      body: "Adds SSO.",
-      commits: ["Add Okta client"],
+    expect(activities[0]!.summarize).toMatchObject({
+      prefix: "Merged - ",
+      suffix: " #12",
+      issueKey: null,
+      details: { merged: true, body: "Adds SSO.", commits: ["Add Okta client"] },
     });
   });
 
+  it("logs a pull request closed without merging as Closed", () => {
+    const pr = authored({ createdAt: "2026-10-01T09:00:00Z", closedAt: "2026-10-05T12:00:00Z" });
+    expect(map({ authored: [pr] })).toEqual([
+      expect.objectContaining({
+        externalId: "github:pr:acme/web#12:closed",
+        text: "Closed - Add Okta SSO #12",
+      }),
+    ]);
+  });
+
+  it("logs a same-day open and close once, as closed", () => {
+    expect(texts({ authored: [authored({ closedAt: "2026-10-05T17:00:00Z" })] })).toEqual([
+      "Closed - Add Okta SSO #12",
+    ]);
+  });
+
   it("logs opened and merged separately when they fall on different days", () => {
-    const pr = authored({ createdAt: "2026-10-04T10:00:00Z", mergedAt: "2026-10-05T11:00:00Z" });
+    const at = "2026-10-05T11:00:00Z";
+    const pr = authored({ createdAt: "2026-10-04T10:00:00Z", mergedAt: at, closedAt: at });
     const activities = map({
       authored: [pr, pr],
       range: { start: "2026-10-04", end: "2026-10-05" },
     });
-    expect(activities.map((a) => [a.date, a.externalId])).toEqual([
-      ["2026-10-04", "github:pr:acme/web#12:opened"],
-      ["2026-10-05", "github:pr:acme/web#12:merged"],
+    expect(activities.map((a) => [a.date, a.text])).toEqual([
+      ["2026-10-04", "Opened - Add Okta SSO #12"],
+      ["2026-10-05", "Merged - Add Okta SSO #12"],
     ]);
   });
 
   it("only logs what happened inside the range", () => {
-    const pr = authored({ createdAt: "2026-10-04T10:00:00Z", mergedAt: "2026-10-05T11:00:00Z" });
-    expect(map({ authored: [pr], range: { start: "2026-10-04", end: "2026-10-04" } })).toEqual([
-      expect.objectContaining({ externalId: "github:pr:acme/web#12:opened" }),
+    const at = "2026-10-05T11:00:00Z";
+    const pr = authored({ createdAt: "2026-10-04T10:00:00Z", mergedAt: at, closedAt: at });
+    expect(texts({ authored: [pr], range: { start: "2026-10-04", end: "2026-10-04" } })).toEqual([
+      "Opened - Add Okta SSO #12",
     ]);
   });
 
@@ -123,11 +150,42 @@ describe("toGitHubActivities", () => {
         tz: "Asia/Kolkata",
         range: { start: "2026-10-06", end: "2026-10-06" },
       }),
-    ).toEqual([
-      expect.objectContaining({ date: "2026-10-06", text: "Opened web#12: Add Okta SSO" }),
+    ).toEqual([expect.objectContaining({ date: "2026-10-06", text: "Opened - Add Okta SSO #12" })]);
+  });
+});
+
+describe("toGitHubActivities: Jira keys", () => {
+  it("puts the key in its own column and takes it out of the title", () => {
+    const pr = authored({ title: "[PAY-7] feat: add Okta SSO" });
+    expect(texts({ authored: [pr], jiraProjects: JIRA })).toEqual([
+      "Opened - PAY-7 - Add Okta SSO #12",
     ]);
+    expect(map({ authored: [pr], jiraProjects: JIRA })[0]!.summarize?.issueKey).toBe("PAY-7");
   });
 
+  it("finds the key in the branch, then the description", () => {
+    expect(
+      texts({ authored: [authored({ headRefName: "feature/pay-7-okta" })], jiraProjects: JIRA }),
+    ).toEqual(["Opened - PAY-7 - Add Okta SSO #12"]);
+    expect(texts({ authored: [authored({ body: "Closes WEB-31." })], jiraProjects: JIRA })).toEqual(
+      ["Opened - WEB-31 - Add Okta SSO #12"],
+    );
+  });
+
+  it("ignores look-alikes that aren't projects in your Jira", () => {
+    const pr = authored({ body: "Hash with SHA-256, encode as UTF-8" });
+    expect(texts({ authored: [pr], jiraProjects: JIRA })).toEqual(["Opened - Add Okta SSO #12"]);
+  });
+
+  it("leaves the key out when Jira isn't connected", () => {
+    const pr = authored({ title: "PAY-7: add Okta SSO" });
+    expect(texts({ authored: [pr], jiraProjects: null })).toEqual([
+      "Opened - PAY-7: add Okta SSO #12",
+    ]);
+  });
+});
+
+describe("toGitHubActivities: reviews", () => {
   it("collapses a day's reviews on one pull request into its strongest outcome", () => {
     const pr = reviewed({
       reviews: {
@@ -144,24 +202,30 @@ describe("toGitHubActivities", () => {
     expect(rest).toEqual([]);
     expect(activity).toMatchObject({
       externalId: "github:review:acme/api#45:2026-10-05",
-      text: "Approved api#45: Fix double charge on retry",
+      text: "Approved - Fix double charge on retry #45",
       occurredAt: new Date("2026-10-05T17:00:00Z"),
     });
     expect(activity!.summarize).toBeUndefined();
   });
 
-  it("words change requests and plain comments", () => {
+  it("words change requests and plain comments, with the Jira key when there is one", () => {
     const at = "2026-10-05T09:00:00Z";
-    const requested = map({
-      reviewed: [
-        reviewed({ reviews: { nodes: [{ state: "CHANGES_REQUESTED", submittedAt: at }] } }),
-      ],
-    });
-    const commented = map({
-      reviewed: [reviewed({ reviews: { nodes: [{ state: "COMMENTED", submittedAt: at }] } })],
-    });
-    expect(requested[0]!.text).toBe("Requested changes on api#45: Fix double charge on retry");
-    expect(commented[0]!.text).toBe("Reviewed api#45: Fix double charge on retry");
+    expect(
+      texts({
+        reviewed: [
+          reviewed({
+            headRefName: "PAY-9-double-charge",
+            reviews: { nodes: [{ state: "CHANGES_REQUESTED", submittedAt: at }] },
+          }),
+        ],
+        jiraProjects: JIRA,
+      }),
+    ).toEqual(["Changes requested - PAY-9 - Fix double charge on retry #45"]);
+    expect(
+      texts({
+        reviewed: [reviewed({ reviews: { nodes: [{ state: "COMMENTED", submittedAt: at }] } })],
+      }),
+    ).toEqual(["Reviewed - Fix double charge on retry #45"]);
   });
 
   it("ignores reviews on your own pull requests", () => {

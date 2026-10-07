@@ -11,7 +11,8 @@ import type { Integration } from "@/lib/db/schema";
 import { clip, IntegrationError, type Activity } from "./activity";
 import { decryptSecret } from "./crypto";
 import { fetchGitHubActivity } from "./github";
-import { fetchJiraActivity } from "./jira";
+import { fetchJiraActivity, listProjectKeys, type JiraCredentials } from "./jira";
+import { stripIssueKey } from "./pr-line";
 import { aiSummariesAvailable, summarizePullRequest } from "./summarize";
 import type { ProviderSyncResult, SyncResult } from "./types";
 
@@ -38,7 +39,14 @@ export type SyncOptions = {
 export async function syncUserActivity(userId: string, opts: SyncOptions): Promise<SyncResult> {
   const now = opts.now ?? new Date();
   const connected = await listIntegrations(userId);
-  const providers = await Promise.all(connected.map((i) => syncOne(userId, i, opts, now)));
+  // GitHub lines carry a Jira key only when Jira is connected. Loaded once, on first use.
+  const jira = connected.find((i) => i.provider === "jira");
+  let projects: Promise<ReadonlySet<string> | null> | undefined;
+  const jiraProjects = () => (projects ??= jira ? loadJiraProjects(jira) : Promise.resolve(null));
+
+  const providers = await Promise.all(
+    connected.map((i) => syncOne(userId, i, opts, now, jiraProjects)),
+  );
   return { imported: providers.reduce((n, p) => n + p.imported, 0), providers };
 }
 
@@ -47,6 +55,7 @@ async function syncOne(
   integration: Integration,
   opts: SyncOptions,
   now: Date,
+  jiraProjects: () => Promise<ReadonlySet<string> | null>,
 ): Promise<ProviderSyncResult> {
   const { provider } = integration;
   const last = integration.lastSyncedAt?.getTime();
@@ -55,7 +64,7 @@ async function syncOne(
   }
 
   try {
-    const activities = await fetchActivity(integration, opts);
+    const activities = await fetchActivity(integration, opts, jiraProjects);
     const known = await knownExternalIds(
       userId,
       activities.map((a) => a.externalId),
@@ -93,26 +102,55 @@ async function syncOne(
   }
 }
 
-async function fetchActivity(integration: Integration, opts: SyncOptions): Promise<Activity[]> {
-  let token: string;
+function readToken(integration: Integration): string {
   try {
-    token = decryptSecret(integration.secret);
+    return decryptSecret(integration.secret);
   } catch {
     throw new IntegrationError("The saved token can't be read any more. Connect again.", "auth");
   }
-  if (integration.provider === "github") {
-    return fetchGitHubActivity({
-      token,
-      login: integration.accountId,
-      range: opts.range,
-      tz: opts.tz,
-    });
-  }
+}
+
+function jiraCredentials(integration: Integration): JiraCredentials {
   if (!integration.siteUrl || !integration.email) {
     throw new IntegrationError("The Jira connection is incomplete. Connect again.", "auth");
   }
+  return {
+    siteUrl: integration.siteUrl,
+    apiUrl: integration.apiUrl,
+    email: integration.email,
+    token: readToken(integration),
+  };
+}
+
+/** Null when Jira can't be read: GitHub lines then go without a key rather than failing. */
+async function loadJiraProjects(jira: Integration): Promise<ReadonlySet<string> | null> {
+  try {
+    return await listProjectKeys(jiraCredentials(jira));
+  } catch (error) {
+    console.warn(
+      "[sync] couldn't load Jira projects; pull request lines go without ticket keys",
+      error,
+    );
+    return null;
+  }
+}
+
+async function fetchActivity(
+  integration: Integration,
+  opts: SyncOptions,
+  jiraProjects: () => Promise<ReadonlySet<string> | null>,
+): Promise<Activity[]> {
+  if (integration.provider === "github") {
+    return fetchGitHubActivity({
+      token: readToken(integration),
+      login: integration.accountId,
+      range: opts.range,
+      tz: opts.tz,
+      jiraProjects: await jiraProjects(),
+    });
+  }
   return fetchJiraActivity({
-    creds: { siteUrl: integration.siteUrl, email: integration.email, token },
+    creds: jiraCredentials(integration),
     accountId: integration.accountId,
     range: opts.range,
     tz: opts.tz,
@@ -127,8 +165,14 @@ async function withSummaries(activities: Activity[]): Promise<Activity[]> {
     .slice(0, MAX_SUMMARIES_PER_SYNC);
   const summaries = new Map<string, string>();
   await forEachLimited(candidates, SUMMARY_CONCURRENCY, async (a) => {
-    const summary = await summarizePullRequest(a.summarize!.details);
-    if (summary) summaries.set(a.externalId, a.summarize!.prefix + summary);
+    const { prefix, suffix, issueKey, details } = a.summarize!;
+    const summary = await summarizePullRequest(details);
+    // The key already has its own column; drop it if the summary repeats it.
+    if (summary)
+      summaries.set(
+        a.externalId,
+        prefix + (issueKey ? stripIssueKey(summary, issueKey) : summary) + suffix,
+      );
   });
   return activities.map((a) => {
     const text = summaries.get(a.externalId);

@@ -4,15 +4,22 @@ import {
   activityWindow,
   cleanTitle,
   IntegrationError,
-  repoName,
   type Activity,
   type PullRequestDetails,
 } from "./activity";
+import {
+  findIssueKey,
+  pullRequestLineParts,
+  stripIssueKey,
+  type LineStatus,
+  type PullRequestStatus,
+} from "./pr-line";
 
 /**
  * GitHub activity through the GraphQL API, with a personal access token.
- *   - Pull requests you opened or merged in the range
+ *   - Pull requests you opened, merged or closed in the range
  *   - Reviews you submitted on other people's pull requests
+ * Lines follow lib/integrations/pr-line.ts: "Merged - PAY-7 - Add Okta SSO #128".
  * A fine-grained token needs read access to "Pull requests" on the repos you work in.
  * A classic token needs the `repo` scope (or `public_repo` for public work only).
  */
@@ -31,8 +38,10 @@ export type AuthoredPullRequest = {
   title: string;
   url: string;
   body: string;
+  headRefName: string;
   createdAt: string;
   mergedAt: string | null;
+  closedAt: string | null;
   additions: number;
   deletions: number;
   repository: { nameWithOwner: string };
@@ -44,6 +53,8 @@ export type ReviewedPullRequest = {
   number: number;
   title: string;
   url: string;
+  body: string;
+  headRefName: string;
   author: { login: string } | null;
   repository: { nameWithOwner: string };
   reviews: { nodes: ({ state: string; submittedAt: string | null } | null)[] } | null;
@@ -55,7 +66,7 @@ query AuthoredPullRequests($q: String!, $after: String) {
     pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
-        number title url body createdAt mergedAt additions deletions
+        number title url body headRefName createdAt mergedAt closedAt additions deletions
         repository { nameWithOwner }
         commits(first: 30) { nodes { commit { messageHeadline } } }
         files(first: 40) { nodes { path additions deletions } }
@@ -70,7 +81,7 @@ query ReviewedPullRequests($q: String!, $after: String, $login: String!) {
     pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
-        number title url
+        number title url body headRefName
         author { login }
         repository { nameWithOwner }
         reviews(first: 50, author: $login) { nodes { state submittedAt } }
@@ -157,16 +168,19 @@ export async function fetchGitHubActivity(opts: {
   login: string;
   range: DateRange;
   tz: string;
+  /** Project keys in the user's Jira, to pick out ticket keys. Null when Jira isn't connected. */
+  jiraProjects: ReadonlySet<string> | null;
 }): Promise<Activity[]> {
   const { start, end } = activityWindow(opts.range, opts.tz);
   const span = `${searchTime(start)}..${searchTime(new Date(end.getTime() - 1000))}`;
   const user = opts.login;
-  const [created, merged, reviewed] = await Promise.all([
+  const [created, closed, reviewed] = await Promise.all([
     searchAll<AuthoredPullRequest>(opts.token, AUTHORED_QUERY, {
       q: `is:pr author:${user} created:${span}`,
     }),
+    // Merging closes a pull request, so this finds merged and closed-unmerged alike.
     searchAll<AuthoredPullRequest>(opts.token, AUTHORED_QUERY, {
-      q: `is:pr author:${user} merged:${span}`,
+      q: `is:pr author:${user} closed:${span}`,
     }),
     // `updated` has no upper bound: a later push or comment must not hide a review from the range.
     searchAll<ReviewedPullRequest>(opts.token, REVIEWED_QUERY, {
@@ -175,11 +189,12 @@ export async function fetchGitHubActivity(opts: {
     }),
   ]);
   return toGitHubActivities({
-    authored: [...created, ...merged],
+    authored: [...created, ...closed],
     reviewed,
     login: user,
     range: opts.range,
     tz: opts.tz,
+    jiraProjects: opts.jiraProjects,
   });
 }
 
@@ -208,10 +223,19 @@ function details(pr: AuthoredPullRequest, merged: boolean): PullRequestDetails {
 }
 
 const REVIEW_RANK: Record<string, number> = { APPROVED: 3, CHANGES_REQUESTED: 2 };
-const REVIEW_VERB: Record<string, string> = {
+const REVIEW_STATUS: Record<string, LineStatus> = {
   APPROVED: "Approved",
-  CHANGES_REQUESTED: "Requested changes on",
+  CHANGES_REQUESTED: "Changes requested",
 };
+
+/** The Jira key the PR names (title, then branch, then description), and the title without it. */
+function keyAndTitle(
+  pr: { title: string; headRefName: string; body: string },
+  jiraProjects: ReadonlySet<string> | null | undefined,
+): { key: string | null; title: string } {
+  const key = jiraProjects ? findIssueKey([pr.title, pr.headRefName, pr.body], jiraProjects) : null;
+  return { key, title: cleanTitle(key ? stripIssueKey(pr.title, key) : pr.title) };
+}
 
 /** Maps search results to activities. Pure: no network, no clock. */
 export function toGitHubActivities(input: {
@@ -220,31 +244,35 @@ export function toGitHubActivities(input: {
   login: string;
   range: DateRange;
   tz: string;
+  jiraProjects?: ReadonlySet<string> | null;
 }): Activity[] {
   const window = activityWindow(input.range, input.tz);
   const activities: Activity[] = [];
 
   const authored = new Map(input.authored.map((pr) => [pr.url, pr]));
   for (const pr of authored.values()) {
-    const ref = `${repoName(pr.repository.nameWithOwner)}#${pr.number}`;
     const id = `github:pr:${pr.repository.nameWithOwner}#${pr.number}`;
+    const { key, title } = keyAndTitle(pr, input.jiraProjects);
     const merged = window.dayOf(pr.mergedAt);
+    const closed = pr.mergedAt ? null : window.dayOf(pr.closedAt);
     const opened = window.dayOf(pr.createdAt);
-    const add = (verb: "Merged" | "Opened", when: { at: Date; date: string }) => {
-      const prefix = `${verb} ${ref}: `;
+    const add = (status: PullRequestStatus, when: { at: Date; date: string }) => {
+      const { prefix, suffix } = pullRequestLineParts(status, key, pr.number);
       activities.push({
         source: "github",
-        externalId: `${id}:${verb.toLowerCase()}`,
+        externalId: `${id}:${status.toLowerCase()}`,
         occurredAt: when.at,
         date: when.date,
-        text: prefix + cleanTitle(pr.title),
+        text: prefix + title + suffix,
         url: pr.url,
-        summarize: { prefix, details: details(pr, verb === "Merged") },
+        summarize: { prefix, suffix, issueKey: key, details: details(pr, status === "Merged") },
       });
     };
     if (merged) add("Merged", merged);
-    // Opened and merged on the same day is one piece of work, so only the merge is logged.
-    if (opened && opened.date !== merged?.date) add("Opened", opened);
+    if (closed) add("Closed", closed);
+    // Opened and finished on the same day is one piece of work, so only the outcome is logged.
+    const finished = merged ?? closed;
+    if (opened && opened.date !== finished?.date) add("Opened", opened);
   }
 
   const login = input.login.toLowerCase();
@@ -262,14 +290,19 @@ export function toGitHubActivities(input: {
         state: !seen || rank > (REVIEW_RANK[seen.state] ?? 1) ? review.state : seen.state,
       });
     }
-    const ref = `${repoName(pr.repository.nameWithOwner)}#${pr.number}`;
+    const { key, title } = keyAndTitle(pr, input.jiraProjects);
     for (const [date, { at, state }] of byDay) {
+      const { prefix, suffix } = pullRequestLineParts(
+        REVIEW_STATUS[state] ?? "Reviewed",
+        key,
+        pr.number,
+      );
       activities.push({
         source: "github",
         externalId: `github:review:${pr.repository.nameWithOwner}#${pr.number}:${date}`,
         occurredAt: at,
         date,
-        text: `${REVIEW_VERB[state] ?? "Reviewed"} ${ref}: ${cleanTitle(pr.title)}`,
+        text: prefix + title + suffix,
         url: pr.url,
       });
     }

@@ -7,13 +7,57 @@ import { activityWindow, IntegrationError, type Activity } from "./activity";
  * every issue you moved to another status in the range. One entry per issue,
  * status and day, so "In Progress" in the morning and "Done" in the afternoon
  * are both logged.
+ *
+ * Atlassian has two kinds of API token. A plain token works at the site address
+ * (acme.atlassian.net). A token "with scopes" only works through Atlassian's
+ * gateway (api.atlassian.com/ex/jira/{cloudId}) and needs the read:jira-work and
+ * read:jira-user scopes. verifyJira works out which one it has, and the
+ * connection keeps the address that worked.
  */
 
 const SEARCH_PAGES = 3;
 const CHANGELOG_PAGES = 5;
 const DONE_NAME = /\b(done|closed|resolved|complete[d]?|released|shipped)\b/i;
 
-export type JiraCredentials = { siteUrl: string; email: string; token: string };
+export type JiraCredentials = {
+  siteUrl: string;
+  /** Where API calls go when it isn't the site: Atlassian's gateway, for tokens with scopes. */
+  apiUrl?: string | null;
+  email: string;
+  token: string;
+};
+
+const GATEWAY = "https://api.atlassian.com/ex/jira";
+const CLOUD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const REJECTED =
+  "Jira didn't accept this email and API token. Use the email you sign in to Atlassian with and paste the whole token. If it still fails, your organisation may block API tokens: ask a Jira admin.";
+const MISSING_SCOPES =
+  "This token is missing scopes. Create one with the read:jira-work and read:jira-user scopes, or a token without scopes.";
+const FORBIDDEN =
+  "Jira refused access. A token with scopes needs read:jira-work and read:jira-user.";
+
+/** A failed Jira call, with the HTTP status so callers can tell a bad token from missing scopes. */
+export class JiraRequestError extends IntegrationError {
+  constructor(
+    message: string,
+    kind: "auth" | "unavailable",
+    readonly status: number,
+    /** Atlassian's own error text, when the response had one. */
+    readonly detail: string | null,
+  ) {
+    super(message, kind);
+  }
+}
+
+async function atlassianMessage(res: Response): Promise<string | null> {
+  const body = (await res.json().catch(() => null)) as {
+    errorMessages?: unknown[];
+    message?: unknown;
+  } | null;
+  const message = body?.errorMessages?.[0] ?? body?.message;
+  return typeof message === "string" && message.length < 300 ? message : null;
+}
 
 export type JiraIssue = {
   id: string;
@@ -58,7 +102,7 @@ export function normalizeJiraSite(input: string): string | null {
 async function jira<T>(creds: JiraCredentials, path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${creds.siteUrl}${path}`, {
+    res = await fetch(`${creds.apiUrl ?? creds.siteUrl}${path}`, {
       method: body === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Basic ${Buffer.from(`${creds.email}:${creds.token}`).toString("base64")}`,
@@ -73,11 +117,19 @@ async function jira<T>(creds: JiraCredentials, path: string, body?: unknown): Pr
   } catch {
     throw new IntegrationError("Couldn't reach Jira. Check the site address.", "unavailable");
   }
-  if (res.status === 401 || res.status === 403) {
-    throw new IntegrationError(
-      "Jira rejected the email and API token. Connect again with a new token.",
+  if (res.status === 401) {
+    const detail = await atlassianMessage(res);
+    throw new JiraRequestError(
+      /scope/i.test(detail ?? "")
+        ? MISSING_SCOPES
+        : "Jira rejected the email and API token. Connect again with a new token.",
       "auth",
+      401,
+      detail,
     );
+  }
+  if (res.status === 403) {
+    throw new JiraRequestError(FORBIDDEN, "auth", 403, await atlassianMessage(res));
   }
   if (res.status === 404) {
     throw new IntegrationError("That Jira site wasn't found. Check the address.", "unavailable");
@@ -91,11 +143,77 @@ async function jira<T>(creds: JiraCredentials, path: string, body?: unknown): Pr
   return (await res.json()) as T;
 }
 
+/**
+ * Atlassian's gateway address for a site, from the public tenant_info endpoint.
+ * Null if the site doesn't say, so no token is ever sent anywhere unexpected.
+ */
+async function gatewayUrl(siteUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${siteUrl}/_edge/tenant_info`, {
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const { cloudId } = (await res.json()) as { cloudId?: unknown };
+    return typeof cloudId === "string" && CLOUD_ID.test(cloudId) ? `${GATEWAY}/${cloudId}` : null;
+  } catch {
+    return null;
+  }
+}
+
+type JiraUser = { accountId: string; displayName?: string };
+
+/**
+ * Checks the email and token before they're saved, and works out where API calls
+ * should go: the site for a plain token, the gateway for a token with scopes.
+ */
 export async function verifyJira(
-  creds: JiraCredentials,
-): Promise<{ accountId: string; displayName: string }> {
-  const me = await jira<{ accountId: string; displayName?: string }>(creds, "/rest/api/3/myself");
-  return { accountId: me.accountId, displayName: me.displayName || creds.email };
+  creds: Omit<JiraCredentials, "apiUrl">,
+): Promise<{ accountId: string; displayName: string; apiUrl: string | null }> {
+  const found = (me: JiraUser, apiUrl: string | null) => ({
+    accountId: me.accountId,
+    displayName: me.displayName || creds.email,
+    apiUrl,
+  });
+
+  try {
+    return found(await jira<JiraUser>({ ...creds, apiUrl: null }, "/rest/api/3/myself"), null);
+  } catch (error) {
+    if (!(error instanceof JiraRequestError) || error.status !== 401) throw error;
+  }
+
+  // The site said 401. A token with scopes is always refused there, so try the gateway.
+  const apiUrl = await gatewayUrl(creds.siteUrl);
+  if (!apiUrl) throw new IntegrationError(REJECTED, "auth");
+  try {
+    return found(await jira<JiraUser>({ ...creds, apiUrl }, "/rest/api/3/myself"), apiUrl);
+  } catch (error) {
+    if (error instanceof JiraRequestError && error.status === 401) {
+      throw new IntegrationError(
+        error.message === MISSING_SCOPES ? MISSING_SCOPES : REJECTED,
+        "auth",
+      );
+    }
+    throw error;
+  }
+}
+
+/** Keys of every project the user can see ("PAY", "WEB"), used to recognise ticket keys on pull requests. */
+export async function listProjectKeys(creds: JiraCredentials): Promise<Set<string>> {
+  const keys = new Set<string>();
+  let startAt = 0;
+  for (let page = 0; page < 10; page++) {
+    const res = await jira<{ values?: { key: string }[]; isLast?: boolean }>(
+      creds,
+      `/rest/api/3/project/search?startAt=${startAt}&maxResults=100`,
+    );
+    const values = res.values ?? [];
+    for (const project of values) keys.add(project.key.toUpperCase());
+    if (res.isLast !== false || values.length === 0) break;
+    startAt += values.length;
+  }
+  return keys;
 }
 
 function jqlDate(date: string): string {

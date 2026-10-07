@@ -283,7 +283,9 @@ function JiraFields() {
         <HelpLink href="https://id.atlassian.com/manage-profile/security/api-tokens">
           Create an API token
         </HelpLink>{" "}
-        for the account you use in Jira. Jira Cloud only.
+        for the account you use in Jira. Either kind works. For one with scopes, choose Jira, then{" "}
+        <code className="font-mono">read:jira-work</code> and{" "}
+        <code className="font-mono">read:jira-user</code>. Jira Cloud only.
       </p>
     </>
   );
