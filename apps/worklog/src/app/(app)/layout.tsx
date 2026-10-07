@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { BottomTabs } from "@/components/app/bottom-tabs";
+import { DailyReminder } from "@/components/app/daily-reminder";
 import { ShortcutProvider } from "@/components/app/shortcut-provider";
 import { Sidebar } from "@/components/app/sidebar";
 import { TimezoneSync } from "@/components/app/timezone-sync";
 import { auth } from "@/lib/auth";
-import { resolveTimeZone } from "@/lib/dates";
+import { resolveTimeZone, todayInZone } from "@/lib/dates";
+import { hasEntriesOn } from "@/lib/db/queries/entries";
 import { getUserWithSettings } from "@/lib/db/queries/users";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,11 +16,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const name = user.name || user.email?.split("@")[0] || "You";
+  const timezone = resolveTimeZone(user.timezone);
   const shellUser = {
     name,
-    timezone: resolveTimeZone(user.timezone),
+    timezone,
     initial: name.charAt(0).toUpperCase(),
   };
+  const { reminderEnabled, reminderTime, lastRemindedOn } = user.settings;
+  const today = todayInZone(timezone);
+  const loggedToday = reminderEnabled && (await hasEntriesOn(user.id, today));
 
   return (
     <div className="flex min-h-dvh">
@@ -29,6 +35,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BottomTabs />
       <ShortcutProvider />
       <TimezoneSync hasTimezone={Boolean(user.timezone)} />
+      {reminderEnabled ? (
+        <DailyReminder
+          // A new time starts fresh, even if the reminder was closed earlier today.
+          key={reminderTime}
+          tz={timezone}
+          today={today}
+          reminderTime={reminderTime.slice(0, 5)}
+          loggedToday={loggedToday}
+          dismissedOn={lastRemindedOn}
+        />
+      ) : null}
     </div>
   );
 }

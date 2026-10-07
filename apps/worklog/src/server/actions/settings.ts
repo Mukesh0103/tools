@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUserId, signOut } from "@/lib/auth";
+import { resolveTimeZone, todayInZone } from "@/lib/dates";
 import { updateGenerationOutput } from "@/lib/db/queries/generations";
 import {
   deleteUser,
@@ -19,11 +20,17 @@ export async function saveSettings(input: unknown): Promise<ActionResult<null>> 
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
   const { timezone, reminderTime, aiSummaries, ...rest } = parsed.data;
+  const time = `${reminderTime}:00`;
+  const before = (await getUserWithSettings(userId))?.settings;
+  // A new reminder time, or switching it back on, brings back a reminder closed earlier today.
+  const reminderChanged =
+    before?.reminderTime !== time || (rest.reminderEnabled && !before.reminderEnabled);
   await updateUserTimezone(userId, timezone);
   await upsertSettings(userId, {
     ...rest,
-    reminderTime: `${reminderTime}:00`,
+    reminderTime: time,
     ...(aiSummaries === undefined ? {} : { aiSummaries }),
+    ...(reminderChanged ? { lastRemindedOn: null } : {}),
   });
   revalidatePath("/", "layout");
   return { ok: true, data: null };
@@ -42,6 +49,14 @@ export async function adoptBrowserTimezone(timezone: unknown): Promise<ActionRes
     await updateUserTimezone(userId, parsed.data);
     revalidatePath("/", "layout");
   }
+  return { ok: true, data: null };
+}
+
+/** Closes the in-app reminder for the rest of the user's local day. */
+export async function dismissReminder(): Promise<ActionResult<null>> {
+  const userId = await requireUserId();
+  const user = await getUserWithSettings(userId);
+  await upsertSettings(userId, { lastRemindedOn: todayInZone(resolveTimeZone(user?.timezone)) });
   return { ok: true, data: null };
 }
 

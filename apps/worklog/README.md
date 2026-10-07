@@ -51,20 +51,20 @@ The integration tests start their own Postgres container. To use an existing dat
 
 See [`.env.example`](.env.example) for every variable. Each integration switches on only when its keys are present:
 
-| Variable                               | Needed for                              | Without it                                                                     |
-| -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `DATABASE_URL`                         | Everything                              | App won't start                                                                |
-| `AUTH_SECRET`                          | Sessions                                | App won't start                                                                |
-| `APP_URL`                              | Links in emails                         | Defaults to `http://localhost:3000`                                            |
-| `AUTH_GITHUB_ID` / `_SECRET`           | "Continue with GitHub"                  | Button hidden                                                                  |
-| `AUTH_GOOGLE_ID` / `_SECRET`           | "Continue with Google"                  | Button hidden                                                                  |
-| `RESEND_API_KEY` + `EMAIL_FROM`        | Magic links and reminder emails         | Dev: printed to the console. Prod: magic link hidden and reminders logged only |
-| `CRON_SECRET`                          | `/api/cron/sync`, `/api/cron/reminders` | Endpoints return 401                                                           |
-| `ANTHROPIC_API_KEY`                    | AI summaries of imported pull requests  | The pull request title is used (prefix like `feat:` removed)                   |
-| `ANTHROPIC_MODEL`                      | Picking the summary model               | `claude-opus-5-5`                                                              |
-| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring                        | Off                                                                            |
-| `NEXT_PUBLIC_POSTHOG_KEY`              | Product analytics                       | Off                                                                            |
-| `AUTH_TEST_LOGIN_SECRET`               | Password-less test login for Playwright | Off. **Never set this in production.**                                         |
+| Variable                               | Needed for                              | Without it                                                   |
+| -------------------------------------- | --------------------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`                         | Everything                              | App won't start                                              |
+| `AUTH_SECRET`                          | Sessions                                | App won't start                                              |
+| `APP_URL`                              | Absolute URLs in link previews          | The Vercel deployment URL (localhost in dev)                 |
+| `AUTH_GITHUB_ID` / `_SECRET`           | "Continue with GitHub"                  | Button hidden                                                |
+| `AUTH_GOOGLE_ID` / `_SECRET`           | "Continue with Google"                  | Button hidden                                                |
+| `RESEND_API_KEY` + `EMAIL_FROM`        | Email sign-in (magic links)             | Dev: link printed to the console. Prod: email sign-in hidden |
+| `CRON_SECRET`                          | `/api/cron/sync`                        | Endpoint returns 401                                         |
+| `ANTHROPIC_API_KEY`                    | AI summaries of imported pull requests  | The pull request title is used (prefix like `feat:` removed) |
+| `ANTHROPIC_MODEL`                      | Picking the summary model               | `claude-opus-5-5`                                            |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring                        | Off                                                          |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | Product analytics                       | Off                                                          |
+| `AUTH_TEST_LOGIN_SECRET`               | Password-less test login for Playwright | Off. **Never set this in production.**                       |
 
 OAuth callback URLs are `{APP_URL}/api/auth/callback/github` and `{APP_URL}/api/auth/callback/google`.
 
@@ -92,7 +92,6 @@ src/
 │       ├── sync/                # imports the signed-in user's GitHub + Jira activity
 │       ├── auth/[...nextauth]/  # Auth.js
 │       ├── cron/sync/           # hourly import for everyone connected
-│       ├── cron/reminders/      # hourly reminder sweep
 │       └── export/              # Markdown / CSV download
 ├── components/                  # ui/ primitives, entries/, generate/, settings/, app/ shell
 ├── lib/
@@ -102,6 +101,7 @@ src/
 │   ├── auth.ts                  # Auth.js config, only providers whose keys are set
 │   ├── dates.ts                 # time-zone-aware ranges and labels
 │   ├── parse-entry.ts           # !blocker flag
+│   ├── reminder.ts              # when the daily reminder is due
 │   └── validators.ts            # Zod schemas shared by client and server
 ├── server/actions/              # entries, settings, integrations, auth
 └── styles/globals.css           # design tokens (light + dark) as CSS variables
@@ -137,18 +137,17 @@ Every generator writes one text shape: `**Heading**` lines and `– ` bullets. T
 
 **Optimistic UI.** Saving an entry clears the input straight away and shows the row immediately. If the save fails, the row goes away, the text comes back into the input, and a Retry appears. Deletes show an **Undo** toast, which restores the entry with its original id and timestamp.
 
+**Daily reminder.** With the reminder on in Settings, a snackbar appears at the top right of every page once your reminder time passes and nothing is logged for today, with a short chime (once a day, synthesised in `lib/chime.ts`). Browsers only allow sound after you've clicked or typed in the tab, so a tab you've just opened shows it silently. Imported pull requests and issue moves count as logged. It doesn't time out. Saving an entry for today closes it. Closing it with × keeps it closed until the next day, on every device, because the date is saved in `settings.last_reminded_on`. It only shows while Worklog is open, and nothing is emailed.
+
 ## Deploying (Vercel + Neon)
 
 1. **Neon.** Create a project and copy the _pooled_ connection string. The Neon ↔ Vercel integration gives each preview its own database branch.
 2. **Vercel.** Import the repo and set **Root Directory** to `apps/worklog`. `vercel.json` runs `pnpm db:migrate && pnpm build`, so every deploy migrates its own database.
 3. **Env vars.** Add the variables from the table above. At minimum, `DATABASE_URL`, `AUTH_SECRET`, `APP_URL` and at least one sign-in method.
-4. **Resend.** Verify your sending domain and set `EMAIL_FROM` to an address on it.
-5. **Hourly jobs.** `.github/workflows/worklog-reminders.yml` calls `/api/cron/sync` and then `/api/cron/reminders` every hour, because Vercel Hobby only allows daily crons. Sync runs first, so imported work counts as logged and doesn't trigger a reminder. Set the repo variable `WORKLOG_APP_URL` and the secret `WORKLOG_CRON_SECRET` (the same value as `CRON_SECRET`). On Vercel Pro you can use Vercel Cron instead by adding this to `vercel.json`:
+4. **Resend (optional).** For email sign-in, verify your sending domain, then set `RESEND_API_KEY` and an `EMAIL_FROM` address on that domain. Without them, production offers GitHub and Google only.
+5. **Hourly sync.** `.github/workflows/worklog-sync.yml` calls `/api/cron/sync` every hour, because Vercel Hobby only allows daily crons. Set the repo variable `WORKLOG_APP_URL` and the secret `WORKLOG_CRON_SECRET` (the same value as `CRON_SECRET`). On Vercel Pro you can use Vercel Cron instead by adding this to `vercel.json`:
    ```json
-   "crons": [
-     { "path": "/api/cron/sync", "schedule": "0 * * * *" },
-     { "path": "/api/cron/reminders", "schedule": "5 * * * *" }
-   ]
+   "crons": [{ "path": "/api/cron/sync", "schedule": "0 * * * *" }]
    ```
    Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically.
 
@@ -171,7 +170,7 @@ Every generator writes one text shape: `**Heading**` lines and `– ` bullets. T
 - The three generators, with an editable output box and copy
 - History of saved outputs
 - Login with persistent storage
-- Settings: time zone, daily email reminder, standup format, theme
+- Settings: time zone, daily in-app reminder, standup format, theme
 - Markdown and CSV export
 - Account deletion
 

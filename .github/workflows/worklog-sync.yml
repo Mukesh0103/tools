@@ -1,4 +1,4 @@
-name: worklog · Hourly sync and reminders
+name: worklog · Hourly sync
 
 on:
   schedule:
@@ -16,15 +16,8 @@ jobs:
       APP_URL: ${{ vars.WORKLOG_APP_URL }}
       CRON_SECRET: ${{ secrets.WORKLOG_CRON_SECRET }}
     steps:
-      # First, so imported pull requests and issue moves count as logged work.
       - name: Import GitHub and Jira activity
-        continue-on-error: true
         run: |
           curl --fail-with-body --silent --show-error --max-time 60 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             "${APP_URL%/}/api/cron/sync"
-      - name: Send due reminders
-        run: |
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "${APP_URL%/}/api/cron/reminders"

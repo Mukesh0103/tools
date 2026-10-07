@@ -14,8 +14,7 @@ const CONCURRENCY = 3;
 /**
  * GET /api/cron/sync imports yesterday's and today's GitHub and Jira activity for
  * everyone who has connected an integration. Call it hourly with
- * `Authorization: Bearer $CRON_SECRET`, before /api/cron/reminders, so imported
- * work counts as logged and doesn't trigger a reminder.
+ * `Authorization: Bearer $CRON_SECRET`.
  */
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {

@@ -149,7 +149,7 @@ export function SettingsForm({
           <RowLabel
             htmlFor="rem"
             title="Daily reminder"
-            description="An email nudge if you haven’t logged anything by then"
+            description="A reminder and a chime in Worklog if you haven’t logged anything by then"
           />
           <div className="flex items-center gap-3">
             <input
