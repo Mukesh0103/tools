@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listEntriesForDay, updateEntry } from "@/lib/db/queries/entries";
-import { listIntegrations, upsertIntegration } from "@/lib/db/queries/integrations";
+import {
+  deleteIntegration,
+  listIntegrations,
+  upsertIntegration,
+} from "@/lib/db/queries/integrations";
 import { upsertSettings } from "@/lib/db/queries/users";
 import { createUser } from "./helpers";
 
@@ -28,6 +32,7 @@ const { POST } = await import("@/app/api/sync/route");
 const DAY = "2026-10-05";
 const range = { start: DAY, end: DAY };
 const SITE = "https://acme.atlassian.net";
+const GATEWAY = "https://api.atlassian.com/ex/jira/505c2f65-3256-405a-a3cb-c84f09bc987f";
 
 const github = {
   created: [
@@ -36,8 +41,10 @@ const github = {
       title: "feat(auth): add Okta SSO",
       url: "https://github.com/acme/web/pull/12",
       body: "Adds SSO",
+      headRefName: "feature/pay-7-okta-sso",
       createdAt: `${DAY}T09:00:00Z`,
       mergedAt: `${DAY}T15:00:00Z`,
+      closedAt: `${DAY}T15:00:00Z`,
       additions: 10,
       deletions: 2,
       repository: { nameWithOwner: "acme/web" },
@@ -50,6 +57,8 @@ const github = {
       number: 45,
       title: "fix: double charge on retry",
       url: "https://github.com/acme/api/pull/45",
+      body: "",
+      headRefName: "double-charge",
       author: { login: "ravi" },
       repository: { nameWithOwner: "acme/api" },
       reviews: { nodes: [{ state: "APPROVED", submittedAt: `${DAY}T11:00:00Z` }] },
@@ -89,19 +98,22 @@ const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit
     const q: string = body.variables?.q ?? "";
     const nodes = q.includes("reviewed-by:")
       ? github.reviewed
-      : q.includes("created:") || q.includes("merged:")
+      : q.includes("created:") || q.includes("closed:")
         ? github.created
         : [];
     return Response.json({
       data: { search: { pageInfo: { hasNextPage: false, endCursor: null }, nodes } },
     });
   }
-  if (url.startsWith(SITE)) {
+  if (url.startsWith(SITE) || url.startsWith(GATEWAY)) {
     if (jira.status !== 200) return new Response("{}", { status: jira.status });
     if (url.endsWith("/rest/api/3/search/jql"))
       return Response.json({ issues: jira.issues, isLast: true });
     if (url.endsWith("/rest/api/3/changelog/bulkfetch")) {
       return Response.json({ issueChangeLogs: jira.changelogs });
+    }
+    if (url.includes("/rest/api/3/project/search")) {
+      return Response.json({ values: [{ key: "PAY" }], isLast: true });
     }
   }
   return new Response("not found", { status: 404 });
@@ -115,6 +127,7 @@ async function connectBoth(userId: string) {
     displayName: "@ada",
     siteUrl: null,
     email: null,
+    apiUrl: null,
     secret: encryptSecret("github_pat_test_token_000"),
   });
   await upsertIntegration({
@@ -124,6 +137,7 @@ async function connectBoth(userId: string) {
     displayName: "Ada",
     siteUrl: SITE,
     email: "ada@acme.test",
+    apiUrl: null,
     secret: encryptSecret("jira-token-000"),
   });
 }
@@ -154,8 +168,8 @@ describe("syncUserActivity", () => {
 
     const rows = await listEntriesForDay(currentUser, DAY);
     expect(rows.map((r) => [r.text, r.source, r.createdAt.toISOString()]).sort()).toEqual([
-      ["Approved api#45: Fix double charge on retry", "github", `${DAY}T11:00:00.000Z`],
-      ["Merged web#12: Add Okta SSO", "github", `${DAY}T15:00:00.000Z`],
+      ["Approved - Fix double charge on retry #45", "github", `${DAY}T11:00:00.000Z`],
+      ["Merged - PAY-7 - Add Okta SSO #12", "github", `${DAY}T15:00:00.000Z`],
       ["Moved PAY-7 to In Review: Retry failed payouts", "jira", `${DAY}T13:00:00.000Z`],
     ]);
     expect(rows.find((r) => r.source === "jira")?.url).toBe(`${SITE}/browse/PAY-7`);
@@ -186,13 +200,13 @@ describe("syncUserActivity", () => {
     const deleted = await deleteEntry({ id: merged.id });
     expect(deleted.ok).toBe(true);
     await syncUserActivity(currentUser, { range, tz: "UTC", force: true });
-    expect(await texts(currentUser)).not.toContain("Merged web#12: Add Okta SSO");
+    expect(await texts(currentUser)).not.toContain("Merged - PAY-7 - Add Okta SSO #12");
 
     if (!deleted.ok) return;
     expect((await restoreEntry(deleted.data)).ok).toBe(true);
     await syncUserActivity(currentUser, { range, tz: "UTC", force: true });
     const rows = await listEntriesForDay(currentUser, DAY);
-    expect(rows.filter((r) => r.text === "Merged web#12: Add Okta SSO")).toHaveLength(1);
+    expect(rows.filter((r) => r.text === "Merged - PAY-7 - Add Okta SSO #12")).toHaveLength(1);
     expect(rows.find((r) => r.id === merged.id)?.externalId).toBe("github:pr:acme/web#12:merged");
   });
 
@@ -204,6 +218,59 @@ describe("syncUserActivity", () => {
     const auto = await syncUserActivity(currentUser, { range, tz: "UTC", now: soon });
     expect(auto.providers.every((p) => p.status === "skipped")).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("leaves the Jira key out when Jira isn't connected", async () => {
+    await deleteIntegration(currentUser, "jira");
+    await syncUserActivity(currentUser, { range, tz: "UTC", force: true });
+    expect(await texts(currentUser)).toEqual([
+      "Approved - Fix double charge on retry #45",
+      "Merged - Add Okta SSO #12",
+    ]);
+  });
+
+  it("still imports GitHub work, without keys, when Jira can't be read", async () => {
+    jira.status = 401;
+    const result = await syncUserActivity(currentUser, { range, tz: "UTC", force: true });
+    expect(result.providers.find((p) => p.provider === "github")).toMatchObject({
+      status: "ok",
+      imported: 2,
+    });
+    expect(await texts(currentUser)).toContain("Merged - Add Okta SSO #12");
+  });
+
+  it("drops the key from an AI summary that repeats it", async () => {
+    ai.available = true;
+    ai.summarize.mockResolvedValue("PAY-7: Add Okta single sign-on");
+    await syncUserActivity(currentUser, { range, tz: "UTC", force: true, aiSummaries: true });
+    expect(await texts(currentUser)).toContain("Merged - PAY-7 - Add Okta single sign-on #12");
+  });
+
+  it("sends Jira calls through the gateway when the token has scopes", async () => {
+    await upsertIntegration({
+      userId: currentUser,
+      provider: "jira",
+      accountId: "acc-me",
+      displayName: "Ada",
+      siteUrl: SITE,
+      email: "ada@acme.test",
+      apiUrl: GATEWAY,
+      secret: encryptSecret("jira-scoped-token-000"),
+    });
+    const result = await syncUserActivity(currentUser, { range, tz: "UTC", force: true });
+    expect(result.providers.find((p) => p.provider === "jira")).toMatchObject({
+      status: "ok",
+      imported: 1,
+    });
+    const jiraCalls = fetchMock.mock.calls
+      .map(([u]) => String(u))
+      .filter((u) => !u.includes("github"));
+    expect(jiraCalls.length).toBeGreaterThan(0);
+    expect(jiraCalls.every((u) => u.startsWith(GATEWAY))).toBe(true);
+    // Links still point at the site people browse.
+    const row = (await listEntriesForDay(currentUser, DAY)).find((r) => r.source === "jira");
+    expect(row?.url).toBe(`${SITE}/browse/PAY-7`);
+    expect(await texts(currentUser)).toContain("Merged - PAY-7 - Add Okta SSO #12");
   });
 
   it("records a rejected token without stopping the other provider", async () => {
@@ -229,7 +296,7 @@ describe("syncUserActivity", () => {
     await syncUserActivity(currentUser, { range, tz: "UTC", force: true, aiSummaries: true });
     expect(ai.summarize).toHaveBeenCalledTimes(1);
     expect(await texts(currentUser)).toContain(
-      "Merged web#12: Add Okta single sign-on to the admin dashboard",
+      "Merged - PAY-7 - Add Okta single sign-on to the admin dashboard #12",
     );
   });
 
@@ -237,7 +304,7 @@ describe("syncUserActivity", () => {
     ai.available = true;
     await syncUserActivity(currentUser, { range, tz: "UTC", force: true, aiSummaries: false });
     expect(ai.summarize).not.toHaveBeenCalled();
-    expect(await texts(currentUser)).toContain("Merged web#12: Add Okta SSO");
+    expect(await texts(currentUser)).toContain("Merged - PAY-7 - Add Okta SSO #12");
   });
 });
 

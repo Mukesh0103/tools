@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BlockerBadge } from "@/components/ui/chips";
 import { Button } from "@/components/ui/button";
 import type { EntryView } from "@/lib/entry-view";
+import { splitStatus, type LineStatus } from "@/lib/integrations/pr-line";
 import { serializeEntry } from "@/lib/parse-entry";
 import { cn } from "@/lib/utils";
 import { MAX_ENTRY_LENGTH } from "@/lib/validators";
@@ -90,7 +91,7 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
       </span>
       <div className="flex min-w-0 grow flex-wrap items-center gap-x-2 gap-y-1.5 leading-[22px]">
         <span className="text-[15px] break-words">
-          {entry.text}
+          <EntryText entry={entry} />
           <SourceLink entry={entry} />
         </span>
         {entry.isBlocker ? <BlockerBadge /> : null}
@@ -115,6 +116,24 @@ export function EntryItem({ entry, fresh, onUpdate, onDelete }: EntryItemProps) 
         </Button>
       </div>
     </div>
+  );
+}
+
+const STATUS_COLOURS: Partial<Record<LineStatus, string>> = {
+  Opened: "text-pr-open",
+  Merged: "text-pr-merged",
+  Closed: "text-pr-closed",
+};
+
+/** GitHub lines start with a status ("Merged - PAY-7 - Add Okta SSO #128"); pull requests get it in colour. */
+function EntryText({ entry }: { entry: EntryView }) {
+  const parts = entry.source === "github" ? splitStatus(entry.text) : null;
+  if (!parts) return <>{entry.text}</>;
+  return (
+    <>
+      <span className={cn("font-medium", STATUS_COLOURS[parts.status])}>{parts.status}</span>
+      {parts.rest}
+    </>
   );
 }
 

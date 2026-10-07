@@ -113,11 +113,13 @@ src/
 
 **Integrations.** A sync fetches activity for a range of days, maps it to entries with pure functions (`lib/integrations/github.ts`, `jira.ts`), and inserts what's new:
 
-| Source | What becomes an entry                                    | Example                                               |
-| ------ | -------------------------------------------------------- | ----------------------------------------------------- |
-| GitHub | A pull request you opened or merged                      | `Merged web#128: Add Okta SSO to the admin dashboard` |
-| GitHub | Your reviews on someone else's PR, one per PR per day    | `Approved api#45: Fix double charge on retry`         |
-| Jira   | The last status you moved an issue to, per issue per day | `Moved PAY-7 to In Review: Retry failed payouts`      |
+| Source | What becomes an entry                                    | Example                                                     |
+| ------ | -------------------------------------------------------- | ----------------------------------------------------------- |
+| GitHub | A pull request you opened, merged or closed              | `Merged - PAY-7 - Add Okta SSO to the admin dashboard #128` |
+| GitHub | Your reviews on someone else's PR, one per PR per day    | `Approved - Fix double charge on retry #45`                 |
+| Jira   | The last status you moved an issue to, per issue per day | `Moved PAY-7 to In Review: Retry failed payouts`            |
+
+GitHub lines read **Status - Jira key - PR title #number**. The status is coloured on Today and the Timeline: Opened green, Merged purple, Closed red. The Jira key is taken from the PR title, then the branch name, then the description. It's only used if its project exists in your Jira, so `UTF-8` in a description is never mistaken for a ticket. It's left out when Jira isn't connected, or when the PR names no ticket. A PR opened and merged (or closed) on the same day is logged once, with its outcome.
 
 Every imported entry has a stable `external_id`, with a unique index on `(user_id, external_id)`, so re-syncing never duplicates. Imported entries are ordinary entries: you can edit them, and they feed standups, summaries and exports. Their time is when the work happened, and they link back to the PR or issue. Deleting one records a dismissal so it never comes back, and **Undo** lifts it. Edits survive later syncs.
 

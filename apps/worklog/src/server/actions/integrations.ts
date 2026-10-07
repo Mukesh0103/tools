@@ -40,6 +40,7 @@ export async function connectGitHub(
       displayName,
       siteUrl: null,
       email: null,
+      apiUrl: null,
       secret: encryptSecret(parsed.data.token),
     });
     revalidateIntegrations();
@@ -70,6 +71,7 @@ export async function connectJira(input: unknown): Promise<ActionResult<{ displa
       displayName: me.displayName,
       siteUrl,
       email: creds.email,
+      apiUrl: me.apiUrl,
       secret: encryptSecret(creds.token),
     });
     revalidateIntegrations();

@@ -50,6 +50,7 @@ export async function upsertIntegration(
         displayName: values.displayName,
         siteUrl: values.siteUrl,
         email: values.email,
+        apiUrl: values.apiUrl,
         secret: values.secret,
         lastSyncedAt: null,
         lastError: null,
