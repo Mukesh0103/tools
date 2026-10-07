@@ -5,6 +5,10 @@ async function logEntry(page: Page, text: string) {
   await input.fill(text);
   await input.press("Enter");
   await expect(input).toHaveValue("");
+  // The row shows up optimistically. Wait for "Saved", which only appears once the
+  // server confirms, so a reload right after can't beat the insert.
+  const row = page.locator("[data-entry-id]").filter({ hasText: text.replace(/\s*!blocker$/, "") });
+  await expect(row.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });
@@ -60,6 +64,57 @@ test("log three entries, generate a standup, and copy it", async ({ page }) => {
   await expect(row).toBeVisible();
   await row.click();
   await expect(page.getByRole("textbox", { name: /editable/ })).toContainText("(pinged infra)");
+});
+
+test("the heading names the day, and forward stops at today", async ({ page }) => {
+  await page.goto("/today");
+  const heading = page.getByRole("heading", { level: 1 });
+  const nav = page.getByRole("navigation", { name: "Change day" });
+  await expect(heading).toHaveText("Today");
+  await expect(nav.getByRole("button", { name: "Today" })).toBeDisabled();
+  await expect(nav.getByRole("button", { name: "Next day" })).toBeDisabled();
+
+  await nav.getByRole("link", { name: "Previous day" }).click();
+  await expect(heading).toHaveText("Yesterday");
+  await nav.getByRole("link", { name: "Previous day" }).click();
+  await expect(heading).not.toHaveText(/Today|Yesterday/);
+
+  await nav.getByRole("link", { name: "Next day" }).click();
+  await expect(heading).toHaveText("Yesterday");
+  await nav.getByRole("link", { name: "Next day" }).click();
+  await expect(heading).toHaveText("Today");
+  await expect(page).toHaveURL(/\/today$/);
+
+  await nav.getByRole("link", { name: "Previous day" }).click();
+  await expect(heading).toHaveText("Yesterday");
+  await nav.getByRole("link", { name: "Today" }).click();
+  await expect(heading).toHaveText("Today");
+});
+
+test("connecting an integration checks the details before saving", async ({ page }) => {
+  await page.goto("/settings");
+  const card = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Integrations" }) });
+  await expect(card.getByText("Pull requests you open, merge and review")).toBeVisible();
+
+  await card.getByRole("button", { name: "Connect", exact: true }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Connect GitHub" });
+  await dialog.getByLabel("Personal access token").fill("too-short");
+  await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("That doesn't look like a GitHub token");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
+
+  await card.getByRole("button", { name: "Connect", exact: true }).last().click();
+  const jira = page.getByRole("dialog", { name: "Connect Jira" });
+  await jira.getByLabel("Jira site").fill("jira.internal.example.com");
+  await jira.getByLabel("Atlassian email").fill("ada@example.com");
+  await jira.getByLabel("API token").fill("not-a-real-token");
+  await jira.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(jira.getByRole("alert")).toHaveText(
+    "Use your Jira Cloud address, like acme.atlassian.net.",
+  );
 });
 
 test("search, filter, edit and delete with undo on the timeline", async ({ page }) => {

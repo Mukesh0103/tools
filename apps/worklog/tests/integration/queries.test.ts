@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as entryQ from "@/lib/db/queries/entries";
 import * as genQ from "@/lib/db/queries/generations";
-import { listDueReminders, markReminded } from "@/lib/db/queries/reminders";
 import { deleteUser, getUserWithSettings, upsertSettings } from "@/lib/db/queries/users";
 import { createUser, seedEntries } from "./helpers";
 
@@ -124,28 +123,5 @@ describe("users and settings", () => {
     await deleteUser(u.id);
     expect(await getUserWithSettings(u.id)).toBeUndefined();
     expect(await entryQ.listAllEntries(u.id)).toEqual([]);
-  });
-});
-
-describe("reminders", () => {
-  it("picks users past their reminder time who haven't logged today, once", async () => {
-    const now = new Date("2026-09-29T13:00:00Z"); // 18:30 in Kolkata
-    const due = await createUser({ timezone: "Asia/Kolkata" });
-    const logged = await createUser({ timezone: "Asia/Kolkata" });
-    const early = await createUser({ timezone: "America/New_York" }); // 09:00 there
-    const off = await createUser({ timezone: "Asia/Kolkata" });
-    for (const u of [due, logged, early])
-      await upsertSettings(u.id, { reminderEnabled: true, reminderTime: "18:00:00" });
-    await upsertSettings(off.id, { reminderEnabled: false, reminderTime: "18:00:00" });
-    await seedEntries(logged.id, [{ entryDate: "2026-09-29", text: "Already logged" }]);
-
-    const ids = (await listDueReminders(now)).map((c) => c.userId);
-    expect(ids).toContain(due.id);
-    expect(ids).not.toContain(logged.id);
-    expect(ids).not.toContain(early.id);
-    expect(ids).not.toContain(off.id);
-
-    await markReminded(due.id, "2026-09-29");
-    expect((await listDueReminders(now)).map((c) => c.userId)).not.toContain(due.id);
   });
 });

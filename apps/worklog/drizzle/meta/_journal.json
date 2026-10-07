@@ -22,6 +22,20 @@
       "when": 1790773841582,
       "tag": "0002_remove_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791276480803,
+      "tag": "0003_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791354090254,
+      "tag": "0004_jira_api_url",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import { TodayView } from "@/components/entries/today-view";
 import { requireUserId } from "@/lib/auth";
 import { compareDates, isISODate, resolveTimeZone, todayInZone } from "@/lib/dates";
 import { listEntriesForDay } from "@/lib/db/queries/entries";
+import { listIntegrationStatuses } from "@/lib/db/queries/integrations";
 import { getUserWithSettings } from "@/lib/db/queries/users";
 import { toEntryView } from "@/lib/entry-view";
 
@@ -20,9 +21,19 @@ export default async function TodayPage({
   const date =
     isISODate(params.date) && compareDates(params.date, today) <= 0 ? params.date : today;
 
-  const rows = await listEntriesForDay(userId, date);
+  const [rows, integrations] = await Promise.all([
+    listEntriesForDay(userId, date),
+    listIntegrationStatuses(userId),
+  ]);
 
   return (
-    <TodayView key={date} date={date} today={today} entries={rows.map((r) => toEntryView(r, tz))} />
+    <TodayView
+      key={date}
+      date={date}
+      today={today}
+      tz={tz}
+      entries={rows.map((r) => toEntryView(r, tz))}
+      integrations={integrations}
+    />
   );
 }

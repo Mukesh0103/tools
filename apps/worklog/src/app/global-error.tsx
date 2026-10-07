@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useEffect } from "react";
 
 export default function GlobalError({
   error,
@@ -9,6 +10,17 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
+  // reset() alone only re-renders on the client, so an error thrown on the server
+  // (a failed query, say) would come straight back. Fetch the page again first.
+  function retry() {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  }
+
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
       void import("@sentry/nextjs").then((Sentry) => Sentry.captureException(error));
@@ -34,7 +46,7 @@ export default function GlobalError({
             Your entries are safe. Try again in a moment.
           </p>
           <button
-            onClick={reset}
+            onClick={retry}
             style={{
               marginTop: 12,
               height: 36,

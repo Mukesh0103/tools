@@ -9,8 +9,11 @@ import {
   formatTimeZoneLabel,
   isISODate,
   monthsInRange,
+  msUntilNextDay,
   previousWorkday,
   quarterRange,
+  rangeBoundsUtc,
+  sameUtcOffset,
   standupRange,
   timeInZone,
   todayInZone,
@@ -158,5 +161,40 @@ describe("labels", () => {
     expect(formatTimeZoneLabel("Asia/Kolkata", sep)).toBe("Asia/Kolkata (UTC+5:30)");
     expect(formatTimeZoneLabel("America/New_York", sep)).toBe("America/New_York (UTC−4)");
     expect(formatTimeZoneLabel("UTC", sep)).toBe("UTC (UTC)");
+  });
+});
+
+describe("msUntilNextDay", () => {
+  it("counts down to local midnight, not UTC midnight", () => {
+    // 23:30 in Kolkata is 18:00 UTC.
+    expect(msUntilNextDay("Asia/Kolkata", new Date("2026-10-05T18:00:00Z"))).toBe(HOUR / 2);
+    expect(msUntilNextDay("UTC", new Date("2026-10-05T18:00:00Z"))).toBe(6 * HOUR);
+  });
+
+  it("handles a 23-hour DST day", () => {
+    // London springs forward on 29 March 2026: midnight to midnight is 23 hours.
+    expect(msUntilNextDay("Europe/London", new Date("2026-03-29T00:00:00Z"))).toBe(23 * HOUR);
+  });
+});
+
+describe("rangeBoundsUtc", () => {
+  it("covers whole local days, end exclusive", () => {
+    const { start, end } = rangeBoundsUtc(
+      { start: "2026-10-05", end: "2026-10-06" },
+      "Asia/Kolkata",
+    );
+    expect(start.toISOString()).toBe("2026-10-04T18:30:00.000Z");
+    expect(end.toISOString()).toBe("2026-10-06T18:30:00.000Z");
+  });
+});
+
+describe("sameUtcOffset", () => {
+  const now = new Date("2026-10-05T12:00:00Z");
+  it("treats zones at the same offset as the same day", () => {
+    expect(sameUtcOffset("Europe/London", "Europe/Dublin", now)).toBe(true);
+    expect(sameUtcOffset("Asia/Kolkata", "Asia/Calcutta", now)).toBe(true);
+  });
+  it("spots zones that disagree", () => {
+    expect(sameUtcOffset("UTC", "Asia/Kolkata", now)).toBe(false);
   });
 });

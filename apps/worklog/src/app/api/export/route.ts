@@ -24,13 +24,17 @@ export async function GET(request: Request) {
 
   let body: string;
   if (format === "csv") {
-    const header = ["date", "time", "text", "blocker", "created_at"].map(csvCell).join(",");
+    const header = ["date", "time", "text", "blocker", "source", "url", "created_at"]
+      .map(csvCell)
+      .join(",");
     const lines = rows.map((e) =>
       [
         e.entryDate,
         timeInZone(e.createdAt, tz),
         e.text,
         e.isBlocker ? "yes" : "no",
+        e.source,
+        e.url ?? "",
         e.createdAt.toISOString(),
       ]
         .map(csvCell)
@@ -49,7 +53,8 @@ export async function GET(request: Request) {
         day = e.entryDate;
         out.push("", `## ${formatShortDate(day)} (${day})`, "");
       }
-      out.push(`- ${timeInZone(e.createdAt, tz)} ${serializeEntry(e)}`);
+      const link = e.url ? ` (${e.url})` : "";
+      out.push(`- ${timeInZone(e.createdAt, tz)} ${serializeEntry(e)}${link}`);
     }
     body = `${out.join("\n")}\n`;
   }

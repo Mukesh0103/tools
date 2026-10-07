@@ -18,58 +18,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
+import type { IntegrationStatus } from "@/lib/integrations/types";
 import { settingsSchema, type SettingsInput } from "@/lib/validators";
 import { deleteAccount, saveSettings, signOutAction } from "@/server/actions/settings";
+import { IntegrationsCard } from "./integrations-card";
+import { Card, Row, RowLabel } from "./layout";
 
 type Account = { name: string; email: string; initial: string; method: string };
-
-function Row({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-[60px] flex-col gap-3 border-t border-divider px-4 py-3 first:border-t-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      {children}
-    </div>
-  );
-}
-
-function RowLabel({
-  htmlFor,
-  id,
-  title,
-  description,
-}: {
-  htmlFor?: string;
-  id?: string;
-  title: string;
-  description?: string;
-}) {
-  const Title = htmlFor ? "label" : "span";
-  return (
-    <div className="flex flex-col gap-0.5">
-      <Title htmlFor={htmlFor} id={id} className="text-sm font-medium">
-        {title}
-      </Title>
-      {description ? <span className="text-xs text-muted-foreground">{description}</span> : null}
-    </div>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-[13px] font-medium text-subtle-foreground">{title}</h2>
-      <div className="flex flex-col rounded-lg border border-border bg-surface">{children}</div>
-    </section>
-  );
-}
 
 export function SettingsForm({
   account,
   timeZones,
   defaults,
+  integrations,
+  aiAvailable,
 }: {
   account: Account;
   timeZones: { value: string; label: string }[];
   defaults: SettingsInput;
+  integrations: IntegrationStatus[];
+  /** True when the server has ANTHROPIC_API_KEY, so pull requests can be summarised. */
+  aiAvailable: boolean;
 }) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -180,7 +149,7 @@ export function SettingsForm({
           <RowLabel
             htmlFor="rem"
             title="Daily reminder"
-            description="An email nudge if you haven’t logged anything by then"
+            description="A reminder and a chime in Worklog if you haven’t logged anything by then"
           />
           <div className="flex items-center gap-3">
             <input
@@ -250,6 +219,33 @@ export function SettingsForm({
           />
         </Row>
       </Card>
+
+      <IntegrationsCard
+        integrations={integrations}
+        // Only offered when the server has ANTHROPIC_API_KEY. Without it, PR titles are used.
+        aiSetting={
+          aiAvailable ? (
+            <Row>
+              <RowLabel
+                id="ai-l"
+                title="Summarise pull requests with AI"
+                description="Claude reads the description, commits and changed files, and writes the line for you. Off: the pull request title is used."
+              />
+              <Controller
+                control={form.control}
+                name="aiSummaries"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value !== false}
+                    onCheckedChange={field.onChange}
+                    aria-labelledby="ai-l"
+                  />
+                )}
+              />
+            </Row>
+          ) : null
+        }
+      />
 
       <Card title="Your data">
         <Row>
