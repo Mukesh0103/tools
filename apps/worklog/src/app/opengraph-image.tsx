@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Worklog — One line per task. Your standup writes itself.";
+export const alt =
+  "Worklog — Standup, sorted. Log one line per task, or let GitHub and Jira do it.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -14,19 +15,30 @@ const c = {
   border: "#e7e5e4",
   blockerSoft: "#fef2f2",
   blockerForeground: "#b91c1c",
+  prMerged: "#8250df",
   logoBg: "#1c1917",
   logoLine: "#fafaf9",
   logoAccent: "#818cf8",
 };
 
-const HEADLINE = ["One line per task.", "Your standup writes itself."];
-const LOG = [
+// The same copy and sample day as the login page.
+const HEADLINE = "Standup, sorted.";
+const SUBLINE = "Log one line per task, or let GitHub and Jira do it.";
+const LOG: { time: string; text: string; status?: string; blocker?: boolean }[] = [
   { time: "10:20", text: "Sprint planning" },
-  { time: "13:05", text: "Fixed invoices pagination" },
+  { time: "13:05", status: "Merged", text: "- PAYM-7 - Add Okta SSO #128" },
+  { time: "14:40", text: "Moved PAYM-9 to Done: Retry payouts" },
   { time: "15:32", text: "Waiting on DB creds", blocker: true },
 ];
 const STANDUP = [
-  { heading: "Today", items: ["Sprint planning", "Fixed invoices pagination"] },
+  {
+    heading: "Today",
+    items: [
+      "Sprint planning",
+      "Merged - PAYM-7 - Add Okta SSO #128",
+      "Moved PAYM-9 to Done: Retry payouts",
+    ],
+  },
   { heading: "Blockers", items: ["Waiting on DB creds"] },
 ];
 
@@ -85,11 +97,12 @@ const card = {
 export default async function OpengraphImage() {
   const sansText = [
     "Worklog",
-    ...HEADLINE,
+    HEADLINE,
+    SUBLINE,
     ...STANDUP.flatMap((s) => [s.heading, ...s.items]),
     " –→",
   ].join("");
-  const monoText = [...LOG.flatMap((l) => [l.time, l.text]), " !blocker"].join("");
+  const monoText = [...LOG.flatMap((l) => [l.time, l.status ?? "", l.text]), " !blocker"].join("");
   const fonts = (
     await Promise.all([
       loadFont("Inter", 400, sansText),
@@ -117,18 +130,11 @@ export default async function OpengraphImage() {
         <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.3 }}>Worklog</span>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          fontSize: 66,
-          fontWeight: 600,
-          lineHeight: 1.08,
-          letterSpacing: -2.2,
-        }}
-      >
-        <span>{HEADLINE[0]}</span>
-        <span style={{ color: c.muted }}>{HEADLINE[1]}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <span style={{ fontSize: 76, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2.5 }}>
+          {HEADLINE}
+        </span>
+        <span style={{ fontSize: 30, lineHeight: 1.3, color: c.subtle }}>{SUBLINE}</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "stretch", gap: 24 }}>
@@ -138,7 +144,7 @@ export default async function OpengraphImage() {
             flex: 1.2,
             justifyContent: "center",
             fontFamily: "JetBrains Mono",
-            fontSize: 19,
+            fontSize: 18,
             whiteSpace: "nowrap",
             color: c.subtle,
           }}
@@ -146,7 +152,10 @@ export default async function OpengraphImage() {
           {LOG.map((entry) => (
             <div key={entry.time} style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <span style={{ color: c.muted }}>{entry.time}</span>
-              <span>{entry.text}</span>
+              <span style={{ display: "flex", gap: 10 }}>
+                {entry.status ? <span style={{ color: c.prMerged }}>{entry.status}</span> : null}
+                <span>{entry.text}</span>
+              </span>
               {entry.blocker ? (
                 <span
                   style={{
@@ -165,7 +174,7 @@ export default async function OpengraphImage() {
 
         <div style={{ display: "flex", alignItems: "center", fontSize: 34, color: c.muted }}>→</div>
 
-        <div style={{ ...card, gap: 2, color: c.subtle }}>
+        <div style={{ ...card, gap: 2, fontSize: 18, color: c.subtle }}>
           {STANDUP.map((section) => (
             <div key={section.heading} style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontWeight: 600, color: c.foreground }}>{section.heading}</span>

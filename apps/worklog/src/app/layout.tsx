@@ -12,9 +12,9 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-const shareTitle = "Worklog — One line per task. Your standup writes itself.";
+const shareTitle = "Worklog — Standup, sorted.";
 const description =
-  "Log one line per task as you work. Worklog turns your entries into a standup, weekly summary or appraisal notes, ready to paste into Slack.";
+  "Log one line per task, or let GitHub and Jira do it. Worklog turns your day into a standup, weekly summary or appraisal notes, ready to paste into Slack.";
 // Without APP_URL, Next falls back to the Vercel deployment URL (or localhost in dev).
 const siteUrl = process.env.APP_URL || process.env.AUTH_URL;
 
